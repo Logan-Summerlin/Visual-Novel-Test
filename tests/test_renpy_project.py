@@ -1103,9 +1103,34 @@ class TestStyleConsistency(unittest.TestCase):
                 )
 
     def test_slider_bar_styles_defined(self):
-        """The slider and vslider styles should be defined."""
-        self.assertIn("style slider bar:", self.screens)
-        self.assertIn("style vslider vbar:", self.screens)
+        """The slider and vslider styles should be defined without deprecated bar/vbar variant syntax.
+
+        In Ren'Py 8.5+, 'style slider bar:' raises 'style property bar is not known'.
+        The correct form is simply 'style slider:' and 'style vslider:'.
+        """
+        # Must NOT use deprecated variant syntax that crashes Ren'Py 8.5+
+        self.assertNotIn(
+            "style slider bar:",
+            self.screens,
+            "CRITICAL: 'style slider bar:' is invalid in Ren'Py 8.5+ and causes a crash. "
+            "Use 'style slider:' instead."
+        )
+        self.assertNotIn(
+            "style vslider vbar:",
+            self.screens,
+            "CRITICAL: 'style vslider vbar:' is invalid in Ren'Py 8.5+ and causes a crash. "
+            "Use 'style vslider:' instead."
+        )
+        # Must have the correct plain style definitions
+        # Use re.search with MULTILINE so ^ matches line-starts inside the file
+        self.assertIsNotNone(
+            re.search(r'^style slider:', self.screens, re.MULTILINE),
+            "style slider: must be defined (without 'bar' variant keyword)"
+        )
+        self.assertIsNotNone(
+            re.search(r'^style vslider:', self.screens, re.MULTILINE),
+            "style vslider: must be defined (without 'vbar' variant keyword)"
+        )
 
     def test_no_conflicting_style_inheritance(self):
         """No style should be defined twice with different parents.
@@ -1176,6 +1201,569 @@ class TestAllImageReferences(unittest.TestCase):
                     os.path.isfile(path),
                     f"Interpolated image missing: {resolved} (from {ref})"
                 )
+
+
+################################################################################
+## Test 18: Ren'Py Version-Specific Style Syntax
+################################################################################
+
+
+class TestRenpyVersionCompatibility(unittest.TestCase):
+    """Test for syntax that changed between Ren'Py versions and causes crashes."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.screens = read_file("screens.rpy")
+
+    def test_no_deprecated_bar_variant_syntax(self):
+        """Ren'Py 8.5+ rejects 'style X bar:' and 'style X vbar:' as unknown properties.
+
+        The multi-style variant syntax (style slider bar:, style vslider vbar:) was
+        removed in Ren'Py 8.5.  Plain 'style slider:' and 'style vslider:' must be
+        used instead.
+        """
+        deprecated_patterns = [
+            (r'^style\s+\w+\s+bar\s*:', "style X bar:"),
+            (r'^style\s+\w+\s+vbar\s*:', "style X vbar:"),
+        ]
+        for pattern, description in deprecated_patterns:
+            self.assertNotRegex(
+                self.screens,
+                pattern,
+                f"Deprecated Ren'Py 7.x syntax '{description}' found in screens.rpy. "
+                f"This causes 'style property X is not known' in Ren'Py 8.5+."
+            )
+
+    def test_slider_styles_use_correct_syntax(self):
+        """slider and vslider must be defined as plain styles, not bar variants."""
+        # Use re.search with MULTILINE so ^ matches line starts within the file
+        self.assertIsNotNone(
+            re.search(r'^style slider:\s*$', self.screens, re.MULTILINE),
+            "style slider: must be defined as a simple colon definition (no 'bar' variant keyword)"
+        )
+        self.assertIsNotNone(
+            re.search(r'^style vslider:\s*$', self.screens, re.MULTILINE),
+            "style vslider: must be defined as a simple colon definition (no 'vbar' variant keyword)"
+        )
+
+    def test_slider_has_required_properties(self):
+        """slider style must have base_bar and thumb properties."""
+        match = re.search(
+            r'^style slider:(.*?)(?=^style |\Z)',
+            self.screens, re.MULTILINE | re.DOTALL
+        )
+        self.assertIsNotNone(match, "style slider: block not found")
+        block = match.group(1)
+        self.assertIn("base_bar", block, "style slider: must define base_bar")
+        self.assertIn("thumb", block, "style slider: must define thumb")
+
+    def test_vslider_has_required_properties(self):
+        """vslider style must have base_bar and thumb properties."""
+        match = re.search(
+            r'^style vslider:(.*?)(?=^style |\Z)',
+            self.screens, re.MULTILINE | re.DOTALL
+        )
+        self.assertIsNotNone(match, "style vslider: block not found")
+        block = match.group(1)
+        self.assertIn("base_bar", block, "style vslider: must define base_bar")
+        self.assertIn("thumb", block, "style vslider: must define thumb")
+
+
+################################################################################
+## Test 19: Text Interpolation Safety
+################################################################################
+
+
+class TestTextInterpolation(unittest.TestCase):
+    """Test that [var] interpolations in screen text refer to defined variables.
+
+    Ren'Py substitutes [VarName] in text strings at runtime.  If VarName is not
+    defined in any accessible scope, the game crashes with NameError.  This is
+    especially treacherous when the variable name is capitalised differently from
+    the defined store variable (e.g. [Knowledge] vs. knowledge).
+    """
+
+    # Variables that are legitimately defined (case-insensitive list built from
+    # store defaults and Ren'Py built-ins used in our project).
+    KNOWN_VARIABLES = {
+        # Store variables (script.rpy defaults)
+        "player_name", "trust_elara", "trust_kael", "trust_sirin",
+        "knowledge", "duty", "freedom", "power", "true_route",
+        # Ren'Py built-ins commonly interpolated
+        "renpy", "config", "gui", "persistent",
+        # Local screen variables
+        "count", "page", "eid", "ename", "etheme", "slot",
+        "screen_name", "lang",
+    }
+
+    # Ren'Py special modifiers (e.g. [config.name!t], [renpy.version_only])
+    MODIFIER_PATTERN = re.compile(r'\[([a-zA-Z_]\w*(?:\.\w+)*)(?:![a-z]+)?\]')
+
+    @classmethod
+    def setUpClass(cls):
+        cls.files = read_all_rpy_files()
+
+    def _extract_interpolations(self, text):
+        """Return list of (var_root, full_ref) tuples from [var] patterns."""
+        results = []
+        for m in self.MODIFIER_PATTERN.finditer(text):
+            full_ref = m.group(1)
+            root = full_ref.split(".")[0]
+            results.append((root, full_ref))
+        return results
+
+    def test_no_undefined_capitalised_variables_in_screen_text(self):
+        """Screen text must not interpolate capitalised names that shadow lowercase vars.
+
+        A common error is writing {color=#aaa}[Knowledge]{/color} when only
+        'knowledge' (lowercase) is defined — this crashes at runtime.
+        """
+        screens = self.files.get("screens.rpy", "")
+        # Split into text-display contexts: text "...", label "...", etc.
+        # We look for any quoted string containing [XxxXxx] where Xxx is uppercase
+        # and NOT a known Ren'Py built-in with capital letters.
+        suspicious_pattern = re.compile(r'"([^"]*\[[A-Z][a-zA-Z_]*\][^"]*)"')
+        for m in suspicious_pattern.finditer(screens):
+            string_content = m.group(1)
+            # Check every interpolation in this string
+            for root, full_ref in self._extract_interpolations(string_content):
+                # Capitalised root that isn't a known built-in namespace
+                if root[0].isupper() and root.lower() not in self.KNOWN_VARIABLES:
+                    self.fail(
+                        f"Possible undefined variable in screen text: [{full_ref}] — "
+                        f"'{root}' is capitalised but only '{root.lower()}' is defined. "
+                        f"Escape with [[{root}] to display a literal bracket, or define "
+                        f"the variable."
+                    )
+
+    def test_ending_gallery_theme_strings_are_escaped(self):
+        """The ending gallery theme strings must not contain unescaped [Variable] refs.
+
+        Previously: '{color=#88aaff}[Knowledge]{/color}' — crashes on unlocked endings.
+        Fixed:       '{color=#88aaff}[[Knowledge]{/color}' — displays '[Knowledge]'.
+        """
+        screens = self.files.get("screens.rpy", "")
+        bad_patterns = [
+            r'"\{color=[^}]+\}\[Knowledge\]',
+            r'"\{color=[^}]+\}\[Duty\]',
+            r'"\{color=[^}]+\}\[Freedom\]',
+            r'"\{color=[^}]+\}\[Power\]',
+        ]
+        for pattern in bad_patterns:
+            self.assertNotRegex(
+                screens, pattern,
+                f"Unescaped capitalised variable interpolation found matching {pattern}. "
+                "Use [[ to produce a literal '[' character."
+            )
+
+    def test_script_interpolations_use_defined_variables(self):
+        """All [var] interpolations in script.rpy must reference defined store variables."""
+        script = self.files.get("script.rpy", "")
+        defined_vars = set(re.findall(r'default\s+(\w+)\s*=', script))
+        defined_vars.update(self.KNOWN_VARIABLES)
+        # Ren'Py built-in namespaces and special forms
+        builtin_roots = {"renpy", "config", "gui", "persistent", "store",
+                         "player_name", "_", "h", "d", "i"}
+
+        for m in re.finditer(r'"([^"]*)"', script):
+            string_val = m.group(1)
+            for root, full_ref in self._extract_interpolations(string_val):
+                if root in builtin_roots:
+                    continue
+                if root.startswith("_"):
+                    continue
+                self.assertIn(
+                    root, defined_vars,
+                    f"Interpolation [{full_ref}] in script.rpy — '{root}' not in store defaults. "
+                    f"Defined vars: {sorted(defined_vars)}"
+                )
+
+
+################################################################################
+## Test 20: No Tabs In .rpy Files (Issue #4)
+################################################################################
+
+
+class TestNoTabsInRpyFiles(unittest.TestCase):
+    """Test that .rpy files use spaces, not tabs, for indentation.
+
+    Mixing tabs and spaces causes IndentationError parse failures in Ren'Py.
+    This catches Issue #4 from the common-issues log.
+    """
+
+    def test_no_tab_indentation(self):
+        """No .rpy file should contain tab characters."""
+        for fname, content in read_all_rpy_files().items():
+            lines_with_tabs = [
+                (lineno + 1, repr(line))
+                for lineno, line in enumerate(content.split("\n"))
+                if "\t" in line
+            ]
+            self.assertEqual(
+                lines_with_tabs, [],
+                f"{fname} contains tab characters (tabs break Ren'Py indentation):\n"
+                + "\n".join(f"  line {ln}: {ln_repr}" for ln, ln_repr in lines_with_tabs[:5])
+            )
+
+
+################################################################################
+## Test 21: Text Tag Balance (Issue #13)
+################################################################################
+
+
+class TestTextTagBalance(unittest.TestCase):
+    """Verify that styled text tags are properly balanced in script and screens.
+
+    Unbalanced {b}, {i}, {color}, {u}, {s} tags cause rendering exceptions that
+    are hard to spot during authoring but crash the game at the affected line.
+    """
+
+    # Pairs: open-tag regex → close tag string
+    TAG_PAIRS = [
+        (re.compile(r'\{b\}'), "{/b}"),
+        (re.compile(r'\{i\}'), "{/i}"),
+        (re.compile(r'\{u\}'), "{/u}"),
+        (re.compile(r'\{s\}'), "{/s}"),
+        (re.compile(r'\{color=[^}]+\}'), "{/color}"),
+        (re.compile(r'\{a=[^}]+\}'), "{/a}"),
+        (re.compile(r'\{outlinecolor=[^}]+\}'), "{/outlinecolor}"),
+    ]
+
+    def _check_tags_balanced(self, content, filename):
+        """Check that every open tag in a quoted string has a matching close tag."""
+        # Extract all double-quoted strings
+        for str_match in re.finditer(r'"((?:[^"\\]|\\.)*)"', content):
+            s = str_match.group(1)
+            for open_re, close_tag in self.TAG_PAIRS:
+                opens = len(open_re.findall(s))
+                closes = s.count(close_tag)
+                if opens != closes:
+                    self.fail(
+                        f"{filename}: Unbalanced text tag in string near "
+                        f"position {str_match.start()}: "
+                        f"found {opens} open(s) but {closes} close(s) for "
+                        f"'{close_tag}' in: {s[:120]!r}"
+                    )
+
+    def test_script_text_tags_balanced(self):
+        self._check_tags_balanced(read_file("script.rpy"), "script.rpy")
+
+    def test_screens_text_tags_balanced(self):
+        self._check_tags_balanced(read_file("screens.rpy"), "screens.rpy")
+
+
+################################################################################
+## Test 22: No Forbidden OS-specific Python (Issue #43)
+################################################################################
+
+
+class TestNoForbiddenPythonModules(unittest.TestCase):
+    """Check that .rpy files do not import OS-specific modules that break on web/mobile.
+
+    subprocess, os.system, ctypes, winreg, etc. are unavailable on Android/iOS/web.
+    Their presence causes import errors or runtime crashes on non-PC platforms.
+    """
+
+    FORBIDDEN_IMPORTS = [
+        "import subprocess",
+        "import ctypes",
+        "import winreg",
+        "import _winapi",
+        "os.system(",
+        "subprocess.run(",
+        "subprocess.Popen(",
+        "subprocess.call(",
+    ]
+
+    def test_no_forbidden_imports(self):
+        for fname, content in read_all_rpy_files().items():
+            for forbidden in self.FORBIDDEN_IMPORTS:
+                self.assertNotIn(
+                    forbidden, content,
+                    f"{fname} uses '{forbidden}' which is unavailable on web/mobile platforms."
+                )
+
+
+################################################################################
+## Test 23: Unbalanced String Quotes (Issue #3)
+################################################################################
+
+
+class TestStringQuoteBalance(unittest.TestCase):
+    """Basic check for unbalanced double-quotes within dialogue lines.
+
+    A single stray quote in a dialogue string causes a parse error that can
+    appear on a completely different line, making it hard to debug.
+    """
+
+    def test_no_lone_unescaped_quote_in_dialogue(self):
+        """Dialogue lines should not contain raw unescaped double-quotes inside strings.
+
+        Ren'Py allows \" inside strings to display a literal quote character.
+        We strip escaped quotes before counting so they don't produce false positives.
+        """
+        script = read_file("script.rpy")
+        # Find lines that look like dialogue: <indent><char> "<text>"
+        dialogue_line_re = re.compile(r'^\s+\w+\s+"(.*)"$', re.MULTILINE)
+        for m in dialogue_line_re.finditer(script):
+            full_line = m.group(0).rstrip()
+            # Remove escaped \" sequences before counting to avoid false positives
+            clean_line = full_line.replace('\\"', "XX")
+            quote_count = clean_line.count('"')
+            self.assertEqual(
+                quote_count % 2, 0,
+                f"Possible unbalanced quotes on line (after removing \\\"): "
+                f"{full_line[:120]!r}"
+            )
+
+
+################################################################################
+## Test 24: Persistent Variable Access Safety (Issue #32, #37)
+################################################################################
+
+
+class TestPersistentAccessSafety(unittest.TestCase):
+    """Check that persistent attributes are accessed safely.
+
+    Accessing persistent.some_attr directly without getattr() risks AttributeError
+    if the attribute was added in a later version and a player has an old save.
+    The ending_gallery screen should use getattr(..., False) for all persistent checks.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.screens = read_file("screens.rpy")
+
+    def test_ending_gallery_uses_getattr_for_persistent(self):
+        """ending_gallery should use getattr(persistent, ..., False) for safety."""
+        gallery_match = re.search(
+            r'screen ending_gallery\(\):(.*?)(?=^screen |\Z)',
+            self.screens, re.MULTILINE | re.DOTALL
+        )
+        self.assertIsNotNone(gallery_match, "ending_gallery screen not found")
+        gallery = gallery_match.group(1)
+        # The per-ending unlock checks should use getattr
+        self.assertIn(
+            "getattr(persistent,",
+            gallery,
+            "ending_gallery should use getattr(persistent, eid, False) for safe access"
+        )
+
+    def test_persistent_defaults_defined_before_use(self):
+        """All persistent attributes used in conditionals must have defaults.
+
+        Direct reads of persistent.X in if/and/or expressions without a
+        'default persistent.X = ...' will raise AttributeError on a fresh install
+        (before the attribute is ever set).
+        """
+        script = read_file("script.rpy")
+        screens = read_file("screens.rpy")
+        combined = script + screens
+
+        # Collect every persistent.X attribute name referenced anywhere
+        all_attrs = set(re.findall(r'persistent\.(\w+)', combined))
+
+        # Collect every persistent.X that has a default declaration
+        defaulted = set(re.findall(r'default\s+persistent\.(\w+)\s*=', script))
+
+        # Check: any attr used in a conditional that lacks a default is risky
+        risky = set()
+        for attr in all_attrs:
+            if attr in defaulted:
+                continue  # safe — has a default
+            # Check whether this attr appears in a conditional context
+            # (getattr() wraps are safe; direct if/and/or/not reads are not)
+            cond_pattern = rf'(?:if|and|or|not)\b[^\n]*\bpersistent\.{re.escape(attr)}\b'
+            if re.search(cond_pattern, combined):
+                risky.add(attr)
+
+        self.assertEqual(
+            risky, set(),
+            f"persistent attributes used in conditionals without defaults: "
+            f"{sorted('persistent.' + a for a in risky)}"
+        )
+
+
+################################################################################
+## Test 25: Save/Rollback Safety — Non-serialisable Store Values (Issue #37, #49)
+################################################################################
+
+
+class TestSaveLoadSafety(unittest.TestCase):
+    """Check that store variables only hold serialisable, rollback-safe values.
+
+    File handles, class instances with __slots__, and other non-picklable objects
+    stored in the default store corrupt saves.  This test guards against the most
+    common patterns.
+    """
+
+    DANGEROUS_PATTERNS = [
+        (r'default\s+\w+\s*=\s*open\(', "open() file handle"),
+        (r'default\s+\w+\s*=\s*threading\.', "threading object"),
+        (r'define\s+\w+\s*=\s*open\(', "open() file handle in define"),
+    ]
+
+    def test_no_non_serialisable_defaults(self):
+        for fname, content in read_all_rpy_files().items():
+            for pattern, description in self.DANGEROUS_PATTERNS:
+                self.assertNotRegex(
+                    content, pattern,
+                    f"{fname}: Found non-serialisable {description} in store variable. "
+                    "This will corrupt saves."
+                )
+
+    def test_all_path_endings_set_persistent_flags(self):
+        """Every non-true ending must set its persistent flag before return."""
+        script = read_file("script.rpy")
+        ending_flag_map = {
+            "ending_scholar": "persistent.ending_scholar = True",
+            "ending_guardian": "persistent.ending_guardian = True",
+            "ending_liberator": "persistent.ending_liberator = True",
+            "ending_shadow": "persistent.ending_shadow = True",
+            "path_true": "persistent.ending_true = True",
+        }
+        for ending, flag_line in ending_flag_map.items():
+            idx = script.find(f"label {ending}:")
+            self.assertNotEqual(idx, -1, f"label {ending}: not found")
+            # Find next label
+            next_label = re.search(r'\nlabel \w+:', script[idx + 1:])
+            section = script[idx: idx + 1 + (next_label.start() if next_label else len(script))]
+            self.assertIn(
+                flag_line, section,
+                f"label {ending}: does not set {flag_line} before ending"
+            )
+
+
+################################################################################
+## Test 26: Complete GUI Variable Coverage Audit
+################################################################################
+
+
+class TestGuiVariableCoverageAudit(unittest.TestCase):
+    """Exhaustive audit: every gui.X property used anywhere must be defined somewhere.
+
+    This extends Test 3 by scanning ALL .rpy files (not just screens.rpy) and
+    checking against definitions in ALL .rpy files (not just gui.rpy).
+    """
+
+    # gui methods/callables and non-property identifiers that look like properties
+    GUI_CALLABLES = frozenset({
+        "text_properties", "button_properties", "button_text_properties",
+        "preference", "init", "history_allow_tags",
+        # File-extension matches: "gui.rpy", "gui.rpyc" etc. are filenames not properties
+        "rpy", "rpyc", "rpyb",
+    })
+
+    def test_complete_gui_coverage(self):
+        all_rpy = read_all_rpy_files()
+        all_content = "\n".join(all_rpy.values())
+
+        # Collect all gui.X references
+        all_refs = set(re.findall(r'\bgui\.(\w+)', all_content))
+        property_refs = all_refs - self.GUI_CALLABLES
+
+        # Collect all definitions (define gui.X = ...)
+        definitions = set(re.findall(r'define\s+gui\.(\w+)\s*=', all_content))
+
+        missing = property_refs - definitions
+        self.assertEqual(
+            missing, set(),
+            "gui properties referenced but never defined: "
+            + ", ".join(sorted("gui." + m for m in missing))
+        )
+
+
+################################################################################
+## Test 27: Config Variable Coverage Audit
+################################################################################
+
+
+class TestConfigVariableCoverageAudit(unittest.TestCase):
+    """Every config.X used in screens/script must be defined or be a Ren'Py built-in."""
+
+    # Ren'Py built-in config properties we reference but don't define ourselves
+    RENPY_BUILTIN_CONFIG = frozenset({
+        "has_autosave", "has_quicksave", "has_music", "has_sound",
+        "thumbnail_width", "thumbnail_height",
+    })
+
+    def test_config_references_are_defined_or_builtin(self):
+        all_rpy = read_all_rpy_files()
+        all_content = "\n".join(all_rpy.values())
+
+        refs = set(re.findall(r'\bconfig\.(\w+)', all_content))
+        definitions = set(re.findall(r'define\s+config\.(\w+)\s*=', all_content))
+
+        undefined = refs - definitions - self.RENPY_BUILTIN_CONFIG
+        self.assertEqual(
+            undefined, set(),
+            "config properties referenced but not defined: "
+            + ", ".join(sorted("config." + r for r in undefined))
+        )
+
+
+################################################################################
+## Test 28: Ending Gallery Screen Safety
+################################################################################
+
+
+class TestEndingGalleryScreen(unittest.TestCase):
+    """Detailed validation of the ending gallery screen."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.screens = read_file("screens.rpy")
+        # Extract the ending_gallery screen block
+        m = re.search(
+            r'^screen ending_gallery\(\):(.*?)(?=^screen |\Z)',
+            cls.screens, re.MULTILINE | re.DOTALL
+        )
+        cls.gallery = m.group(1) if m else ""
+
+    def test_gallery_screen_exists(self):
+        self.assertNotEqual(self.gallery, "", "screen ending_gallery() not found")
+
+    def test_all_four_endings_referenced_in_gallery(self):
+        for ending in ["ending_scholar", "ending_guardian",
+                       "ending_liberator", "ending_shadow"]:
+            self.assertIn(ending, self.gallery, f"{ending} not referenced in gallery")
+
+    def test_true_ending_slot_references_all_four(self):
+        """True-ending slot must check that all 4 endings are discovered."""
+        for ending in ["ending_scholar", "ending_guardian",
+                       "ending_liberator", "ending_shadow"]:
+            self.assertIn(
+                f"persistent.{ending}", self.gallery,
+                f"True ending check in gallery missing persistent.{ending}"
+            )
+
+    def test_no_bare_capital_interpolation_in_gallery(self):
+        """Gallery must not contain unescaped [Capital] interpolations that crash on unlock.
+
+        Ren'Py escapes a literal '[' with '[['.  An un-escaped '[Capital]' pattern
+        causes a NameError at runtime because Ren'Py tries to substitute a variable
+        named Capital that doesn't exist.  The negative lookbehind (?<!\\[) skips
+        properly-escaped '[[Capital]' occurrences.
+        """
+        # (?<!\[) ensures we don't flag the second [ of a correctly escaped [[
+        bad = re.findall(r'(?<!\[)\[(?!prefix_)[A-Z][a-zA-Z]*\]', self.gallery)
+        self.assertEqual(
+            bad, [],
+            f"Unescaped capital-letter interpolations in ending_gallery: {bad}. "
+            "These cause NameError at runtime when an ending is unlocked. "
+            "Use [[ to display a literal '[' character."
+        )
+
+    def test_ending_count_variable_defined_before_use(self):
+        """The [count] interpolation must be preceded by '$ count = ...'."""
+        if "[count]" in self.gallery:
+            # Find [count] usage
+            count_idx = self.gallery.index("[count]")
+            before = self.gallery[:count_idx]
+            self.assertIn(
+                "$ count =", before,
+                "[count] used in ending_gallery but '$ count = ...' not found before it"
+            )
 
 
 if __name__ == "__main__":
