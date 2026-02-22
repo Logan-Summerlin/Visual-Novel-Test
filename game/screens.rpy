@@ -99,7 +99,6 @@ style say_dialogue:
     xanchor 0.0
     xsize gui.dialogue_width
     ypos gui.dialogue_ypos
-    id "dialogue"
 
 ## Input screen
 screen input(prompt):
@@ -623,8 +622,6 @@ style history_window is empty
 style history_name is gui_label
 style history_name_text is gui_label_text
 style history_text is gui_text
-
-style history_text is gui_text
 style history_label is gui_label
 style history_label_text is gui_label_text
 
@@ -649,7 +646,7 @@ style history_text:
     xsize gui.history_text_width
     min_width gui.history_text_width
     text_align gui.history_text_xalign
-    layout ("subtitle" if gui.history_text_xalign else "tex")
+    layout ("subtitle" if gui.history_text_xalign else "text")
 
 style history_label:
     xfill True
@@ -1015,7 +1012,7 @@ style nvl_dialogue:
     xsize gui.nvl_text_width
     min_width gui.nvl_text_width
     text_align gui.nvl_text_xalign
-    layout ("subtitle" if gui.nvl_text_xalign else "tex")
+    layout ("subtitle" if gui.nvl_text_xalign else "text")
 
 style nvl_thought:
     xpos gui.nvl_thought_xpos
@@ -1024,7 +1021,7 @@ style nvl_thought:
     xsize gui.nvl_thought_width
     min_width gui.nvl_thought_width
     text_align gui.nvl_thought_xalign
-    layout ("subtitle" if gui.nvl_thought_xalign else "tex")
+    layout ("subtitle" if gui.nvl_thought_xalign else "text")
 
 style nvl_button:
     properties gui.button_properties("nvl_button")

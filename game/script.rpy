@@ -607,39 +607,23 @@ label chapter_3:
 
     "They look at you expectantly."
 
-    if true_route:
-        menu:
-            "Which path do you choose?"
+    menu:
+        "Which path do you choose?"
 
-            "The northern corridor — Knowledge." if not true_route or true_route:
-                jump path_knowledge
+        "The northern corridor — Knowledge.":
+            jump path_knowledge
 
-            "The eastern corridor — Duty." if not true_route or true_route:
-                jump path_duty
+        "The eastern corridor — Duty.":
+            jump path_duty
 
-            "The southern corridor — Freedom." if not true_route or true_route:
-                jump path_freedom
+        "The southern corridor — Freedom.":
+            jump path_freedom
 
-            "The western corridor — Power." if not true_route or true_route:
-                jump path_power
+        "The western corridor — Power.":
+            jump path_power
 
-            "The hidden path — Step onto the glowing circle." if true_route:
-                jump path_true
-    else:
-        menu:
-            "Which path do you choose?"
-
-            "The northern corridor — Knowledge.":
-                jump path_knowledge
-
-            "The eastern corridor — Duty.":
-                jump path_duty
-
-            "The southern corridor — Freedom.":
-                jump path_freedom
-
-            "The western corridor — Power.":
-                jump path_power
+        "The hidden path — Step onto the glowing circle." if true_route:
+            jump path_true
 
 ################################################################################
 ## PATH OF KNOWLEDGE - The Scholar's Truth
