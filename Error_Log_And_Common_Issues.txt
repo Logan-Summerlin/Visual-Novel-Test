@@ -1,0 +1,430 @@
+REN'PY — 50 COMMON ISSUES / BUGS / CRASH CAUSES (WITH PRACTICAL DETECTION IDEAS)
+
+Note: Many “crashes” are Ren’Py showing the gray error screen with an exception + traceback. Players experience this as a crash.
+The best prevention pattern is: (1) static checks (lint/compile), (2) automated playthrough tests, (3) packaging & platform checks.
+
+
+1) Indentation errors in .rpy files
+   - Symptom: parse error, “IndentationError”, “expected an indented block”.
+   - Detect: compile + lint; automated tests won’t even start.
+
+2) Missing colon after statements (label/menu/screen/if/for/python blocks)
+   - Symptom: parse error at startup.
+   - Detect: compile + lint.
+
+3) Unbalanced quotes / unterminated strings
+   - Symptom: parse error, often points at a later line.
+   - Detect: compile + lint.
+
+4) Tabs mixed with spaces
+   - Symptom: inconsistent indentation / parse errors on some editors.
+   - Detect: pre-commit script to reject tabs in .rpy + compile.
+
+5) Duplicate label names
+   - Symptom: unexpected jumps/calls, or parse-time warnings/errors depending on context.
+   - Detect: lint; also build-time grep for “label <name>:” duplicates.
+
+6) jump/call to a label that doesn’t exist
+   - Symptom: exception at runtime (“Label 'x' is not defined.”).
+   - Detect: lint + automated route tests that exercise all jump/call paths.
+
+7) call/return stack misuse (returning where nothing was called)
+   - Symptom: “Return outside of a call.” / “No active call”.
+   - Detect: automated tests through menus/loops; unit test any custom navigation helper.
+
+8) Python block executes at init with missing imports/variables
+   - Symptom: “NameError” during init; game fails before main menu.
+   - Detect: lint + smoke test that starts game cleanly.
+
+9) Wrong init order (define/default or init python placed too late)
+   - Symptom: variables not defined when screens execute; “NameError”.
+   - Detect: lint + start-to-main-menu test + open every screen test.
+
+10) Using define for mutable objects (list/dict) leading to shared state bugs
+   - Symptom: state persists between new games / surprising cross-session behavior.
+   - Detect: tests that start a new game after finishing one; assert state resets.
+
+11) Using define instead of default for per-playthrough state
+   - Symptom: “New Game” doesn’t reset variables; players see inconsistent state.
+   - Detect: tests that start new game twice and compare initial variables.
+
+12) Text interpolation errors ([var] missing / wrong type / braces)
+   - Symptom: exceptions while rendering dialogue/screen text.
+   - Detect: lint + automated playthroughs that reach all key lines; optionally scan scripts for “[” “]”.
+
+13) Broken or unclosed text tags ({b}, {i}, {color}, etc.)
+   - Symptom: exceptions or rendering glitches; sometimes only on certain lines.
+   - Detect: lint; plus run automated test that displays each major screen/dialogue segment.
+
+14) Image not defined / misspelled image name in `show`/`scene`
+   - Symptom: “Image 'x' not found.” at runtime.
+   - Detect: lint + route tests.
+
+15) Missing image file on disk
+   - Symptom: image not found / FileNotFound at runtime.
+   - Detect: lint + asset manifest check (build a list of referenced images, verify exists).
+
+16) Case sensitivity mismatch in filenames (Windows works, Linux/Android fails)
+   - Symptom: works on dev machine, breaks on other platforms.
+   - Detect: CI tests on Linux + asset case-check script.
+
+17) Unsupported / corrupt image formats
+   - Symptom: crashes or errors when image is decoded.
+   - Detect: asset validation step: load every image via Pillow (or imagemagick identify) in CI.
+
+18) Very large textures causing GPU/VRAM/OOM crashes (especially mobile)
+   - Symptom: random crashes during scene changes or CG viewing.
+   - Detect: CI rule: enforce max resolution + total memory budgets; stress test gallery.
+
+19) LayeredImage / attribute composition errors (missing parts)
+   - Symptom: KeyError/LookupError when attributes combine.
+   - Detect: testcases that iterate through valid attribute sets; lint any adjust_attributes logic.
+
+20) DynamicImage path/key errors (wrong filenames, missing dynamic variants)
+   - Symptom: KeyError or “could not find image” in dynamic situations.
+   - Detect: automated tests that exercise every dynamic variant; build a deterministic variant list.
+
+21) Missing audio files
+   - Symptom: error when playing sound/music (or silent failures depending on config).
+   - Detect: asset check + automated tests that reach every audio cue.
+
+22) Unsupported audio codec/container on target platform
+   - Symptom: works on PC, fails on web/mobile.
+   - Detect: platform build pipeline + a “play each channel” automated test on each platform.
+
+23) Missing or unsupported movie/video files
+   - Symptom: crash/black screen when movie displayable starts.
+   - Detect: platform-specific playback test (especially for web/Android).
+
+24) Screen language: calling a screen with arguments but screen has no parameter list
+   - Symptom: TypeError or lint warnings; UI breaks.
+   - Detect: lint; open every screen in tests with expected args.
+
+25) Screen language: referencing undefined variables in screen expressions
+   - Symptom: NameError/AttributeError when screen is shown.
+   - Detect: test suite that shows every major screen in isolation.
+
+26) Screen recursion / runaway updates (screen calls itself / re-shows rapidly)
+   - Symptom: freeze, high CPU, sometimes stack overflow.
+   - Detect: automated tests with timeouts; add watchdog that fails if FPS/interaction stalls.
+
+27) Conflicting displayable properties (e.g., multiple `at`/positional properties)
+   - Symptom: unpredictable UI or warnings; can cause hard-to-repro bugs.
+   - Detect: enable Ren’Py’s conflicting property checks; include as CI gate.
+
+28) Actions calling functions with wrong signature or side effects
+   - Symptom: crash on click or keypress.
+   - Detect: testcase clicks every button by id/text across screens.
+
+29) Menu choices that reference undefined labels or wrong conditions
+   - Symptom: crash when choosing an option; or unreachable content.
+   - Detect: branch-coverage runner that selects each choice at least once.
+
+30) Choice logic depends on random state (nondeterministic failures)
+   - Symptom: tests flaky; users get inconsistent routes.
+   - Detect: set deterministic RNG seed in test mode; run multiple seeds in CI.
+
+31) Python exceptions in game logic (KeyError/IndexError/TypeError/ValueError)
+   - Symptom: crash at specific line.
+   - Detect: route tests + targeted unit tests for helper functions.
+
+32) None handling mistakes (AttributeError on None)
+   - Symptom: crash in conditional content.
+   - Detect: scenario tests that force “missing/empty” states; fuzz simple flags.
+
+33) Infinite loops in python (while True / long computations on main thread)
+   - Symptom: hang/freeze, “not responding”.
+   - Detect: timeouts in testcases; performance watchdog; forbid long loops without yields.
+
+34) Misuse of renpy.pause / timers leading to deadlocks (waiting for input that never comes)
+   - Symptom: hang in story.
+   - Detect: tests with `until` timeouts; assert that dialogue advances.
+
+35) Save/load breakages after script refactors (changed call stack/variables)
+   - Symptom: players can’t load old saves; exceptions during load.
+   - Detect: “golden save” suite: load saves from previous release and assert success.
+
+36) Save compatibility broken by not preserving/copying .rpyc across builds
+   - Symptom: loads fail because rollback/script mapping changed.
+   - Detect: CI step enforcing .rpyc preservation + automated load of prior saves.
+
+37) Storing non-serializable objects in persistent or store vars (e.g., file handles)
+   - Symptom: save errors, persistent corruption.
+   - Detect: unit tests: attempt save + reload after reaching key states.
+
+38) Persistent corruption / “bad marshal data” / broken persistent file
+   - Symptom: crash at startup before game begins.
+   - Detect: test run that starts game with a synthetic corrupted persistent; ensure recovery path.
+
+39) File I/O permissions (Android/iOS/web sandbox restrictions)
+   - Symptom: crash when reading/writing arbitrary paths.
+   - Detect: platform test that exercises save/export/import features in sandbox.
+
+40) Path issues with reserved directories or special names in project tree
+   - Symptom: build/runtime oddities (e.g., conflicts with internal usage).
+   - Detect: build-time directory policy checks (disallow known-problematic names).
+
+41) Translation (tl) block issues / missing language files / wrong language configuration
+   - Symptom: KeyError or missing strings when changing language.
+   - Detect: tests that switch languages and open each key screen; lint translations.
+
+42) Translation string formatting mismatch (placeholders differ across languages)
+   - Symptom: crash only in some languages.
+   - Detect: run the full “smoke UI” suite for every shipped language.
+
+43) Using OS-specific python features not available everywhere (subprocess, ctypes, etc.)
+   - Symptom: works on Windows, fails on Android/web.
+   - Detect: static scan for forbidden modules per target; platform CI builds.
+
+44) Build classification mistakes (excluding needed assets or including unwanted files)
+   - Symptom: missing assets in distribution; massive builds; build failures.
+   - Detect: “installed build smoke test” that runs ONLY from the packaged build.
+
+45) Packaging differences (web build limitations, mobile asset rules)
+   - Symptom: platform-only crashes or missing media.
+   - Detect: per-platform build + run minimal automated smoke test on each.
+
+46) GPU/renderer incompatibilities (GL/ANGLE/driver quirks)
+   - Symptom: crashes in renderer init or during GL tests.
+   - Detect: run smoke test across renderers; allow fallback verification.
+
+47) Incorrect use of image/screen caching leading to memory growth
+   - Symptom: crash after long play sessions.
+   - Detect: “soak test” that skips through large portions + opens CG gallery repeatedly.
+
+48) Race conditions with threads (if you spawn threads for loading/network)
+   - Symptom: rare crashes, inconsistent state.
+   - Detect: disable threads in deterministic test mode; add stress runs for threaded features.
+
+49) Missing rollback-safe patterns (using python side effects without rollback guards)
+   - Symptom: rollback causes state desync, later crashes.
+   - Detect: tests that intentionally rollback (or load) and re-advance multiple times.
+
+50) UI accessibility / navigation regressions that look like “bugs” to players
+   - Symptom: stuck screens, unclickable buttons, focus traps.
+   - Detect: automated click-by-id sweeps + keyboard navigation tests (tab/enter/esc).
+
+
+===============================================================================
+PRODUCTION-READY TEST SUITE PSEUDOCODE (END-TO-END, “PLAYS LIKE A USER”)
+===============================================================================
+
+GOALS
+- Catch startup crashes, runtime exceptions, missing assets, broken UI flows, save/load regressions, and platform-only failures.
+- Make failures reproducible (deterministic seeds, stable IDs, consistent test data).
+- Run in CI on every commit + on release candidates across target platforms.
+
+CORE IDEA
+- Use three layers:
+  (A) Static/Build checks (fast gates)
+  (B) Automated in-engine testcases that simulate user actions (click/type/skip/screenshot/assert)
+  (C) Packaged-build smoke tests (run from the actual distributed build)
+
+-----------------------------------------------------------------------
+A) STATIC + BUILD CHECKS (CI GATES)
+-----------------------------------------------------------------------
+CI_PIPELINE:
+  step "Install Ren'Py SDK"
+  step "Check script parses/compiles"
+    - run: renpy_cli <project> compile
+    - fail if compile errors
+
+  step "Lint"
+    - run: renpy_cli <project> lint --error-code
+    - store lint report artifact
+    - fail build on any lint error (optionally allow warnings, but track them)
+
+  step "Asset manifest validation"
+    - generate_manifest:
+        - parse scripts to collect:
+            - image references, audio references, movie references
+            - screens to be shown, labels to be jumped/called
+    - validate_files_exist
+    - validate_case_sensitive_paths (compare reference vs actual path)
+    - validate_media_formats (decode/inspect each file)
+    - validate_size_budgets (max texture size, total audio size, etc.)
+
+  step "Distribution build"
+    - run: renpy_cli <project> distribute (or launcher equivalent)
+    - IMPORTANT: preserve .rpyc between builds and/or update old-game directory
+      (to maintain save compatibility)
+
+-----------------------------------------------------------------------
+B) AUTOMATED IN-ENGINE TESTCASES (USER-FLOW TESTING)
+-----------------------------------------------------------------------
+FILE: game/tests/testcases.rpy  (or similar)
+  - Define testsuites/testcases using Ren'Py’s automated testing language.
+  - Use stable ids in screens (e.g., id "start_button") so tests can target elements.
+  - Add hooks to reset state before each testcase.
+
+TEST_MODE_SETUP (runs only when testing):
+  - set deterministic RNG seed
+  - disable networking (if any)
+  - set fast text speed
+  - ensure a clean persistent (or a known fixture)
+  - ensure predictable preferences (windowed, default audio)
+
+GLOBAL TESTSUITE:
+  testsuite global:
+    setup:
+      run ClearPersistent()
+      run SetPreferencesToKnownDefaults()
+      run SetRandomSeed(12345)
+
+    before testcase:
+      run ReturnToMainMenuHard()      # guarantee a known state for each test
+      assert screen "main_menu" timeout 10.0
+
+    after testcase:
+      run CaptureLogsAndCoverage()    # label/menu coverage, screenshots, etc.
+      run ClearTransientState()       # e.g., close screens, stop audio, etc.
+
+    teardown:
+      run ExportCoverageReport()
+      run ExitGame()
+
+SMOKE TESTS (boot + main menu):
+  testcase boot_to_main_menu:
+    assert screen "main_menu" timeout 10.0
+    screenshot "screens/main_menu.png" max_pixel_difference 0.01
+
+NEW GAME STARTUP:
+  testcase start_new_game:
+    click id "start_button"           # or click "Start"
+    advance until label "start" timeout 10.0
+    screenshot "screens/first_line.png" max_pixel_difference 0.02
+
+PREFERENCES / SETTINGS NAV:
+  testcase preferences_navigation:
+    keysym "game_menu"                # open menu (or click quickmenu)
+    assert screen "game_menu" timeout 5.0
+    click "Preferences"
+    assert screen "preferences" timeout 5.0
+    # exercise toggles & sliders
+    click id "toggle_fullscreen"
+    drag id "music_volume_slider" to pos (0.8, 0.5) steps 10
+    click "Return"
+    assert screen "game_menu" timeout 5.0
+    click "Return"
+    assert not screen "game_menu" timeout 5.0
+
+SAVE / LOAD REGRESSION:
+  testcase save_and_load:
+    # reach a deterministic point
+    click id "start_button"
+    skip fast until screen "choice" timeout 20.0
+    click "Option A"
+    run Save(slot=1, name="TEST_SAVE_SLOT_1")
+    run ReturnToMainMenuHard()
+    click "Load"
+    click id "slot_1"
+    assert eval (store.some_flag == True) timeout 10.0
+    screenshot "screens/after_load.png" max_pixel_difference 0.02
+
+HISTORY / LOG SCREEN:
+  testcase history_works:
+    keysym "history"
+    assert screen "history" timeout 5.0
+    scroll amount 10
+    keysym "game_menu"  # or escape
+    assert not screen "history" timeout 5.0
+
+TEXT INPUT (renpy.input or InputValue widgets):
+  testcase text_input_flow:
+    jump_to_label "name_entry"        # or skip until a known label
+    assert screen "name_input" timeout 5.0
+    type "Logan"
+    keysym "K_RETURN"
+    assert eval (store.player_name == "Logan") timeout 5.0
+
+SCREEN COVERAGE (show each major UI):
+  testcase screen_smoke_all:
+    parameter screen_name = ["inventory", "map", "codex", "gallery"]
+    run Show(screen_name)
+    assert screen screen_name timeout 5.0
+    screenshot f"screens/{screen_name}.png" max_pixel_difference 0.02
+    run Hide(screen_name)
+
+ROUTE COVERAGE (one testcase per major route):
+  testsuite routes:
+    testcase route_a_happy_path:
+      click "Start"
+      # repeatedly:
+      # - advance until choice
+      # - choose deterministic option set for this route
+      # - assert key labels reached
+      # - take occasional screenshots
+      skip fast until label "route_a_end" timeout 120.0
+      assert label "route_a_end"
+    testcase route_b_happy_path:
+      ...
+
+CHOICE-BRANCH COVERAGE (systematic exploration):
+  IDEA:
+    - Instrument menus with a stable menu_id and option_id (or derive from label+line).
+    - On each run, choose the first “uncovered” option.
+    - Use quicksave checkpoints before each menu to branch efficiently.
+  PSEUDOCODE:
+    initialize CoverageDB
+    run StartNewGame()
+    while not EndOfGame:
+      if AtMenu(menu_id):
+        if exists UncoveredOption(menu_id):
+          quicksave checkpoint_for(menu_id, depth)
+          pick UncoveredOption(menu_id)
+        else:
+          pick DefaultOption(menu_id)
+      else:
+        advance
+      record ReachedLabels / SeenMenus / Exceptions
+    export CoverageDB
+
+SOAK TEST (memory/perf regression):
+  testcase long_skip_soak:
+    click "Start"
+    repeat N times:
+      skip fast until screen "choice" timeout 30.0
+      click DefaultChoice()
+      # periodically open/close gallery to stress textures
+      if iteration % 10 == 0:
+        keysym "game_menu"
+        click "Gallery"
+        scroll amount 20
+        click "Return"
+        click "Return"
+    assert eval (not renpy.has_critical_error)
+
+MULTI-LANGUAGE SMOKE:
+  testsuite localization:
+    parameter lang = ["english", "japanese", "spanish"]
+    testcase ui_in_lang:
+      run Language(lang)
+      assert screen "main_menu" timeout 10.0
+      click "Preferences"
+      assert screen "preferences" timeout 5.0
+      screenshot f"screens/prefs_{lang}.png" max_pixel_difference 0.02
+
+-----------------------------------------------------------------------
+C) PACKAGED-BUILD SMOKE TESTS (WHAT PLAYERS ACTUALLY RUN)
+-----------------------------------------------------------------------
+RELEASE_PIPELINE:
+  build packages (pc/mac/linux/web/android)
+  for each package:
+    install/unzip into clean directory
+    run: automated smoke testcase suite (boot_to_main_menu, start_new_game, prefs, save_and_load)
+    collect logs + screenshots
+    fail release if any suite fails
+
+CI NOTES
+- Run automated testcases via CLI:
+    renpy_cli <project> test [suite] [options]
+- Use timeouts everywhere so hangs become test failures.
+- Make UI elements testable:
+    - add ids to buttons/sliders
+    - avoid ambiguous button text
+- Record coverage (labels + menus + screens) and gate merges on minimum thresholds.
+
+END RESULT
+- If the game starts and plays through your scripted user flows without exceptions,
+  and screenshots remain within tolerances, you have high confidence that the most
+  common player-facing crashes and regressions are not present.
