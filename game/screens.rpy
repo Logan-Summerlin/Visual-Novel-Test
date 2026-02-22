@@ -58,12 +58,12 @@ style vscrollbar:
     base_bar Frame("gui/scrollbar/vertical_[prefix_]bar.png", gui.vscrollbar_borders, tile=gui.bar_tile)
     thumb Frame("gui/scrollbar/vertical_[prefix_]thumb.png", gui.vscrollbar_borders, tile=gui.bar_tile)
 
-style slider bar:
+style slider:
     ysize gui.bar_size
     base_bar Frame("gui/slider/horizontal_[prefix_]bar.png", gui.slider_borders, tile=gui.bar_tile)
     thumb "gui/slider/horizontal_[prefix_]thumb.png"
 
-style vslider vbar:
+style vslider:
     xsize gui.bar_size
     base_bar Frame("gui/slider/vertical_[prefix_]bar.png", gui.vslider_borders, tile=gui.bar_tile)
     thumb "gui/slider/vertical_[prefix_]thumb.png"
@@ -817,10 +817,10 @@ screen ending_gallery():
                 xalign 0.5
 
                 for ending_info in [
-                    ("ending_scholar", "The Scholar's Truth", "{color=#88aaff}[Knowledge]{/color}"),
-                    ("ending_guardian", "The Guardian's Oath", "{color=#88ff88}[Duty]{/color}"),
-                    ("ending_liberator", "The Liberator's Gambit", "{color=#ffaa88}[Freedom]{/color}"),
-                    ("ending_shadow", "The Shadow's Embrace", "{color=#cc88ff}[Power]{/color}")
+                    ("ending_scholar", "The Scholar's Truth", "{color=#88aaff}[[Knowledge]{/color}"),
+                    ("ending_guardian", "The Guardian's Oath", "{color=#88ff88}[[Duty]{/color}"),
+                    ("ending_liberator", "The Liberator's Gambit", "{color=#ffaa88}[[Freedom]{/color}"),
+                    ("ending_shadow", "The Shadow's Embrace", "{color=#cc88ff}[[Power]{/color}")
                 ]:
                     $ eid, ename, etheme = ending_info
                     frame:
