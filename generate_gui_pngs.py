@@ -227,6 +227,87 @@ def main():
     save_png(f"{BASE}/game_menu.png", 1920, 1080,
              solid_color(25, 20, 35, 255))
 
+    # --- Bar images (gui/bar/) ---
+    # Accent color (#6b4c8a) = rgb(107, 76, 138) for filled portion
+    # Muted color (#3a3a5c) = rgb(58, 58, 92) for empty portion
+    bar_h = 38  # gui.bar_size
+
+    # left.png: filled portion of horizontal bar (accent color)
+    save_png(f"{BASE}/bar/left.png", bar_h, bar_h,
+             solid_color(107, 76, 138, 255))
+
+    # right.png: empty portion of horizontal bar (muted color)
+    save_png(f"{BASE}/bar/right.png", bar_h, bar_h,
+             solid_color(58, 58, 92, 255))
+
+    # top.png: filled portion of vertical bar (accent color)
+    save_png(f"{BASE}/bar/top.png", bar_h, bar_h,
+             solid_color(107, 76, 138, 255))
+
+    # bottom.png: empty portion of vertical bar (muted color)
+    save_png(f"{BASE}/bar/bottom.png", bar_h, bar_h,
+             solid_color(58, 58, 92, 255))
+
+    # --- Scrollbar images (gui/scrollbar/) ---
+    sb_size = 18  # gui.scrollbar_size
+
+    # Horizontal scrollbar
+    save_png(f"{BASE}/scrollbar/horizontal_idle_bar.png", sb_size, sb_size,
+             solid_color(58, 58, 92, 255))
+    save_png(f"{BASE}/scrollbar/horizontal_hover_bar.png", sb_size, sb_size,
+             solid_color(74, 74, 108, 255))
+    save_png(f"{BASE}/scrollbar/horizontal_idle_thumb.png", sb_size, sb_size,
+             solid_color(107, 76, 138, 255))
+    save_png(f"{BASE}/scrollbar/horizontal_hover_thumb.png", sb_size, sb_size,
+             solid_color(192, 160, 224, 255))
+
+    # Vertical scrollbar
+    save_png(f"{BASE}/scrollbar/vertical_idle_bar.png", sb_size, sb_size,
+             solid_color(58, 58, 92, 255))
+    save_png(f"{BASE}/scrollbar/vertical_hover_bar.png", sb_size, sb_size,
+             solid_color(74, 74, 108, 255))
+    save_png(f"{BASE}/scrollbar/vertical_idle_thumb.png", sb_size, sb_size,
+             solid_color(107, 76, 138, 255))
+    save_png(f"{BASE}/scrollbar/vertical_hover_thumb.png", sb_size, sb_size,
+             solid_color(192, 160, 224, 255))
+
+    # --- Slider images (gui/slider/) ---
+    # Slider bars: same as scrollbar but at bar_size height
+    save_png(f"{BASE}/slider/horizontal_idle_bar.png", bar_h, bar_h,
+             solid_color(58, 58, 92, 255))
+    save_png(f"{BASE}/slider/horizontal_hover_bar.png", bar_h, bar_h,
+             solid_color(74, 74, 108, 255))
+
+    # Slider thumbs: circular-ish thumb
+    def slider_thumb_idle(x, y):
+        cx, cy, r = bar_h // 2, bar_h // 2, bar_h // 2 - 2
+        dist = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+        if dist <= r:
+            return (107, 76, 138, 255)
+        return (0, 0, 0, 0)
+
+    def slider_thumb_hover(x, y):
+        cx, cy, r = bar_h // 2, bar_h // 2, bar_h // 2 - 2
+        dist = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+        if dist <= r:
+            return (192, 160, 224, 255)
+        return (0, 0, 0, 0)
+
+    save_png(f"{BASE}/slider/horizontal_idle_thumb.png", bar_h, bar_h,
+             slider_thumb_idle)
+    save_png(f"{BASE}/slider/horizontal_hover_thumb.png", bar_h, bar_h,
+             slider_thumb_hover)
+
+    # Vertical slider
+    save_png(f"{BASE}/slider/vertical_idle_bar.png", bar_h, bar_h,
+             solid_color(58, 58, 92, 255))
+    save_png(f"{BASE}/slider/vertical_hover_bar.png", bar_h, bar_h,
+             solid_color(74, 74, 108, 255))
+    save_png(f"{BASE}/slider/vertical_idle_thumb.png", bar_h, bar_h,
+             slider_thumb_idle)
+    save_png(f"{BASE}/slider/vertical_hover_thumb.png", bar_h, bar_h,
+             slider_thumb_hover)
+
     print("\nAll GUI placeholder PNGs generated successfully!")
 
 

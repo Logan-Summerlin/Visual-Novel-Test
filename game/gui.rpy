@@ -118,13 +118,18 @@ define gui.page_spacing = 0
 define gui.pref_spacing = 15
 define gui.pref_button_spacing = 0
 
-## Scrollbar
-define gui.scrollbar_size = 18
-define gui.unscrollable = "hide"
-
+## Bars and Scrollbars
 define gui.bar_size = 38
 define gui.bar_tile = False
 define gui.bar_borders = Borders(6, 6, 6, 6)
+
+define gui.scrollbar_size = 18
+define gui.scrollbar_borders = Borders(6, 6, 6, 6)
+define gui.vscrollbar_borders = Borders(6, 6, 6, 6)
+define gui.unscrollable = "hide"
+
+define gui.slider_borders = Borders(6, 6, 6, 6)
+define gui.vslider_borders = Borders(6, 6, 6, 6)
 
 ## History
 define gui.history_height = 210
