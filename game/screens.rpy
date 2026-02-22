@@ -203,6 +203,9 @@ style quick_button_text:
 
 default quick_menu = True
 
+init python:
+    config.overlay_screens.append("quick_menu")
+
 ################################################################################
 ## Main Menu and Game Menu Screens
 ################################################################################
