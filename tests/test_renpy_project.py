@@ -904,6 +904,79 @@ class TestEndToEndPaths(unittest.TestCase):
         self.assertIn("persistent.ending_true = True", content)
 
 
+class TestStoryGraphIntegrity(unittest.TestCase):
+    """Validate that the story graph is structurally complete from start to all endings."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.script = read_file("script.rpy")
+        cls.labels = {}
+        cls.transitions = {}
+
+        label_starts = [
+            (m.start(), m.group(1))
+            for m in re.finditer(r'^label\s+(\w+)\s*:', cls.script, re.MULTILINE)
+        ]
+
+        for i, (start, name) in enumerate(label_starts):
+            end = label_starts[i + 1][0] if i + 1 < len(label_starts) else len(cls.script)
+            block = cls.script[start:end]
+            cls.labels[name] = block
+            cls.transitions[name] = set(re.findall(r'jump\s+(\w+)', block))
+
+    def test_all_endings_reachable_from_start(self):
+        required_endings = {
+            "ending_scholar",
+            "ending_guardian",
+            "ending_liberator",
+            "ending_shadow",
+            "path_true",
+        }
+
+        visited = set()
+        stack = ["start"]
+
+        while stack:
+            current = stack.pop()
+            if current in visited:
+                continue
+            visited.add(current)
+            stack.extend(self.transitions.get(current, set()) - visited)
+
+        missing = required_endings - visited
+        self.assertEqual(
+            missing,
+            set(),
+            f"These endings are not reachable from 'start': {', '.join(sorted(missing))}",
+        )
+
+    def test_no_dead_end_labels_without_return_or_jump(self):
+        excluded_labels = {"path_true"}
+
+        for label, content in self.labels.items():
+            if label in excluded_labels:
+                continue
+
+            has_jump = bool(re.search(r'\bjump\s+\w+', content))
+            has_return = bool(re.search(r'^\s+return\s*$', content, re.MULTILINE))
+
+            self.assertTrue(
+                has_jump or has_return,
+                f"Label '{label}' is a dead end (no jump and no return).",
+            )
+
+    def test_true_route_choice_is_conditionally_gated(self):
+        chapter_3_start = self.script.index("label chapter_3:")
+        chapter_3_end = self.script.index("label path_knowledge:")
+        chapter_3_content = self.script[chapter_3_start:chapter_3_end]
+
+        self.assertIn(
+            '"The hidden path — Step onto the glowing circle." if true_route:',
+            chapter_3_content,
+            "True route menu option must be gated with `if true_route`.",
+        )
+
+
 class TestShowNameNotDuplicated(unittest.TestCase):
     """Test that gui.show_name isn't conflictingly defined."""
 
