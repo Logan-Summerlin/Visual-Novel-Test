@@ -11,7 +11,7 @@ define elara = Character("Elara", color="#88aaff")
 define kael = Character("Kael", color="#ff8888")
 define sirin = Character("Sirin", color="#ffcc44")
 define vesper = Character("Vesper", color="#cc88ff")
-define narrator = Character(None, kind=nvl)
+define narrator = Character(None)
 define unknown = Character("???", color="#999999")
 
 ################################################################################

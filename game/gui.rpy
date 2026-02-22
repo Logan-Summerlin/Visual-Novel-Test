@@ -29,6 +29,10 @@ define gui.label_text_size = 36
 define gui.notify_text_size = 24
 define gui.title_text_size = 64
 
+## Backgrounds
+define gui.main_menu_background = "gui/main_menu.png"
+define gui.game_menu_background = "gui/game_menu.png"
+
 ## Main Menu
 define gui.main_menu_background_size_group = None
 
@@ -50,6 +54,13 @@ define gui.namebox_tile = False
 define gui.dialogue_xpos = 402
 define gui.dialogue_ypos = 75
 define gui.dialogue_width = 1116
+
+## Frames
+define gui.frame_borders = Borders(6, 6, 6, 6)
+define gui.frame_tile = False
+define gui.confirm_frame_borders = Borders(60, 60, 60, 60)
+define gui.skip_frame_borders = Borders(24, 8, 75, 8)
+define gui.notify_frame_borders = Borders(24, 8, 60, 8)
 
 ## Buttons
 define gui.button_width = None
@@ -75,6 +86,7 @@ define gui.choice_button_text_xalign = 0.5
 define gui.choice_button_text_idle_color = "#cccccc"
 define gui.choice_button_text_hover_color = "#ffffff"
 define gui.choice_button_text_insensitive_color = "#444444"
+define gui.choice_spacing = 33
 
 ## Slots
 define gui.slot_button_width = 414
@@ -85,6 +97,7 @@ define gui.slot_button_text_xalign = 0.5
 define gui.slot_button_text_idle_color = gui.idle_small_color
 define gui.slot_button_text_selected_idle_color = gui.selected_color
 define gui.slot_button_text_selected_hover_color = gui.hover_color
+define gui.slot_spacing = 15
 
 define config.thumbnail_width = 384
 define config.thumbnail_height = 216
@@ -94,7 +107,16 @@ define gui.file_slot_rows = 2
 
 ## Navigation
 define gui.navigation_xpos = 60
+define gui.navigation_spacing = 6
 define gui.skip_ypos = 15
+define gui.notify_ypos = 68
+
+## Page
+define gui.page_spacing = 0
+
+## Preferences
+define gui.pref_spacing = 15
+define gui.pref_button_spacing = 0
 
 ## Scrollbar
 define gui.scrollbar_size = 18
@@ -103,6 +125,17 @@ define gui.unscrollable = "hide"
 define gui.bar_size = 38
 define gui.bar_tile = False
 define gui.bar_borders = Borders(6, 6, 6, 6)
+
+## History
+define gui.history_height = 210
+define gui.history_name_xpos = 233
+define gui.history_name_ypos = 0
+define gui.history_name_width = 233
+define gui.history_name_xalign = 1.0
+define gui.history_text_xpos = 255
+define gui.history_text_ypos = 3
+define gui.history_text_width = 1110
+define gui.history_text_xalign = 0.0
 
 ## NVL
 define gui.nvl_borders = Borders(0, 15, 0, 30)
@@ -122,3 +155,7 @@ define gui.nvl_thought_width = 1170
 define gui.nvl_thought_xalign = 0.0
 define gui.nvl_button_xpos = 675
 define gui.nvl_button_xalign = 0.0
+define gui.nvl_button_width = 1860
+
+## Quick Menu
+define gui.quick_button_text_size = 21
