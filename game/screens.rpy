@@ -32,10 +32,41 @@ style label_text is gui_text:
 style prompt_text is gui_text:
     properties gui.text_properties("prompt")
 
-style bar is gui_bar
-style vbar is gui_vbar
-style scrollbar is gui_scrollbar
-style vscrollbar is gui_vscrollbar
+style bar:
+    ysize gui.bar_size
+    left_bar Frame("gui/bar/left.png", gui.bar_borders, tile=gui.bar_tile)
+    right_bar Frame("gui/bar/right.png", gui.bar_borders, tile=gui.bar_tile)
+    thumb None
+    thumb_shadow None
+    thumb_offset 0
+
+style vbar:
+    xsize gui.bar_size
+    top_bar Frame("gui/bar/top.png", gui.bar_borders, tile=gui.bar_tile)
+    bottom_bar Frame("gui/bar/bottom.png", gui.bar_borders, tile=gui.bar_tile)
+    thumb None
+    thumb_shadow None
+    thumb_offset 0
+
+style scrollbar:
+    ysize gui.scrollbar_size
+    base_bar Frame("gui/scrollbar/horizontal_[prefix_]bar.png", gui.scrollbar_borders, tile=gui.bar_tile)
+    thumb Frame("gui/scrollbar/horizontal_[prefix_]thumb.png", gui.scrollbar_borders, tile=gui.bar_tile)
+
+style vscrollbar:
+    xsize gui.scrollbar_size
+    base_bar Frame("gui/scrollbar/vertical_[prefix_]bar.png", gui.vscrollbar_borders, tile=gui.bar_tile)
+    thumb Frame("gui/scrollbar/vertical_[prefix_]thumb.png", gui.vscrollbar_borders, tile=gui.bar_tile)
+
+style slider bar:
+    ysize gui.bar_size
+    base_bar Frame("gui/slider/horizontal_[prefix_]bar.png", gui.slider_borders, tile=gui.bar_tile)
+    thumb "gui/slider/horizontal_[prefix_]thumb.png"
+
+style vslider vbar:
+    xsize gui.bar_size
+    base_bar Frame("gui/slider/vertical_[prefix_]bar.png", gui.vslider_borders, tile=gui.bar_tile)
+    thumb "gui/slider/vertical_[prefix_]thumb.png"
 
 style frame:
     padding gui.frame_borders.padding
@@ -131,8 +162,6 @@ screen choice(items):
             textbutton i.caption action i.action
 
 style choice_vbox is vbox
-style choice_button is button
-style choice_button_text is button_text
 
 style choice_vbox:
     xalign 0.5
@@ -140,10 +169,10 @@ style choice_vbox:
     yanchor 0.5
     spacing gui.choice_spacing
 
-style choice_button is default:
+style choice_button is button:
     properties gui.button_properties("choice_button")
 
-style choice_button_text is default:
+style choice_button_text is button_text:
     properties gui.button_text_properties("choice_button")
 
 ## Quick menu screen
