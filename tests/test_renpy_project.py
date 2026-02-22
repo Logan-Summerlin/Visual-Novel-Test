@@ -1107,6 +1107,34 @@ class TestStyleConsistency(unittest.TestCase):
         self.assertIn("style slider bar:", self.screens)
         self.assertIn("style vslider vbar:", self.screens)
 
+    def test_no_conflicting_style_inheritance(self):
+        """No style should be defined twice with different parents.
+
+        For example, 'style choice_button is button' followed by
+        'style choice_button is default:' would silently override the parent.
+        """
+        # Find all "style X is Y" declarations
+        pattern = r'^style\s+(\w+)\s+is\s+(\w+)'
+        declarations = re.findall(pattern, self.screens, re.MULTILINE)
+
+        # Group by style name
+        style_parents = {}
+        conflicts = []
+        for style_name, parent in declarations:
+            if style_name in style_parents:
+                if style_parents[style_name] != parent:
+                    conflicts.append(
+                        f"style {style_name}: first 'is {style_parents[style_name]}', "
+                        f"then 'is {parent}'"
+                    )
+            else:
+                style_parents[style_name] = parent
+
+        self.assertEqual(
+            conflicts, [],
+            f"Conflicting style inheritance: {'; '.join(conflicts)}"
+        )
+
 
 ################################################################################
 ## Test 17: Comprehensive Image Reference Check
