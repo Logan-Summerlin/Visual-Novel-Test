@@ -50,7 +50,6 @@ define gui.namebox_tile = False
 define gui.dialogue_xpos = 402
 define gui.dialogue_ypos = 75
 define gui.dialogue_width = 1116
-define gui.dialogue_text_xalign = 0.0
 
 ## Buttons
 define gui.button_width = None
