@@ -7,7 +7,6 @@
 
 style default:
     properties gui.text_properties()
-    language gui.preference("language")
 
 style input:
     properties gui.text_properties("input", accent=True)
@@ -892,6 +891,16 @@ style confirm_button:
 
 style confirm_button_text:
     properties gui.button_text_properties("confirm_button")
+
+transform delayed_blink(delay, cycle):
+    alpha .5
+    pause delay
+    block:
+        linear .2 alpha 1.0
+        pause .2
+        linear .2 alpha 0.5
+        pause (cycle - .6)
+        repeat
 
 ## Skip indicator screen
 screen skip_indicator():
