@@ -1,0 +1,231 @@
+# Ren’Py: alternate dialogue paths & dynamic story techniques
+
+This is a practical checklist of *patterns* you can combine to create branching dialogue, route systems, and “choices that matter” in Ren’Py visual novels.
+
+---
+
+## 1) The core branching primitives
+
+### Labels + `jump` / `call` / `return`
+- **`label`** marks a point in the script you can branch to.
+- **`jump some_label`** goes there unconditionally.
+- **`call some_label`** goes there *and comes back* to the next line after the call.
+- Use `call` when you want reusable scenes (mini-episodes, repeatable dates, side quests) and keep your main route clean.
+
+**Common pattern:** a route “hub” label that dispatches to scenes based on state.
+- e.g., `label day_5_hub:` → check flags/stat thresholds → `jump` to the correct scene.
+
+---
+
+## 2) Flags (state variables) as “story memory”
+
+### Simple boolean flags
+Track whether the player has done/learned something.
+- `default met_rival = False`
+- Set it when the scene happens.
+- Check it later to unlock or alter lines.
+
+### Integer counters (affection, trust, suspicion)
+Use small counters to represent relationships or reputation.
+- `default affection_yuri = 0`
+- Increment/decrement on choices.
+- Gate scenes/endings: `if affection_yuri >= 3:` …
+
+### Dictionaries for scalable systems
+When you have many characters, use a dict instead of one variable per person:
+- `default rel = {"cove": 0, "baxter": 0, "derek": 0}`
+- This scales cleanly and makes “generic” functions possible.
+
+### “Once only” flags
+Prevent repeated rewards:
+- `default got_key_item = False`
+- Check before giving a benefit.
+
+---
+
+## 3) Conditional choices in menus
+
+### Show/hide options
+Ren’Py menu choices can be conditional:
+- Offer new dialogue lines only if a flag is set.
+- Hide aggressive options unless the player has enough “confidence” stat.
+
+### Soft gating vs hard gating
+- **Soft gate:** show the option but warn it may fail (roleplay-friendly).
+- **Hard gate:** hide the option entirely (clean UI, but less transparent).
+
+### Remember which option the player picked
+Store the selection in a variable (`last_choice = "apologize"`) and reference it later for callbacks.
+
+---
+
+## 4) Conditional dialogue and scene variants
+
+### One scene, multiple flavors
+Instead of branching to separate labels, keep one label and vary the lines:
+- `if met_rival:` use “long-term memory” dialogue
+- `else:` use first-meeting dialogue
+
+### Micro-branching with “merge points”
+A common structure:
+1. Branch to short variants
+2. Converge back to one shared “merge” label
+
+This reduces script explosion while still making choices feel acknowledged.
+
+---
+
+## 5) Route selection systems
+
+### Explicit route choice
+At a route selection menu, set `route = "A"` and then `jump` to that route’s arc.
+
+### Implicit route via accumulated flags
+Calculate the route from the player’s actions (classic “Act 1 determines who you end up with” design):
+- Accumulate points/flags across early chapters.
+- Decide route at a single “route lock-in” label.
+- Store the result so later choices don’t accidentally flip routes.
+
+### Hybrid route system
+Let early behavior influence *availability*, but still let the player confirm the route (“Are you sure you want to pursue…?”).
+
+---
+
+## 6) Stat checks and skill-gated outcomes
+
+### Binary checks
+- `if sword_skill >= 5:` success scene
+- else failure scene
+
+### Degrees of success
+Instead of success/fail only:
+- Great success / success / partial / fail
+- This makes stats feel meaningful more often.
+
+### Hidden vs visible stats
+- Visible stats (shown in UI) support strategy gameplay.
+- Hidden stats support narrative surprise (but can frustrate some players).
+
+---
+
+## 7) Timelines, calendars, and “story scheduling”
+
+### Day/Week loop
+A repeating structure:
+- Morning → choice → afternoon → event → night → increment day
+
+Use a day counter and per-day event lists, e.g. “if day == 10 and rel['cove'] >= 3: …”.
+
+### Event queue
+Keep a list of unlocked events and pop them when triggered, enabling “dynamic” ordering.
+
+---
+
+## 8) Persistent meta-progression (choices across playthroughs)
+
+### Persistent variables
+Use `persistent.*` to remember things across saves/restarts:
+- Unlock a “true ending” after any ending.
+- Add new menu options after the player has seen a route.
+- Change the title screen or extra content after completion.
+
+This is great for *meta-narratives*, NG+, or “the game remembers” effects.
+
+---
+
+## 9) Tracking what the player has seen
+
+### Seen/unseen gating
+Use “seen” logic to:
+- Add a skip-to-new-content flow.
+- Unlock gallery entries only after a CG is viewed.
+- Unlock extra epilogues once the core endings are completed.
+
+---
+
+## 10) Branching via screens and UI state
+
+### Choice UI beyond `menu:`
+- Use screens to create **map selection**, **relationship dashboards**, **inventory**, or **topic lists**.
+- Buttons can set variables, call labels, or trigger actions.
+
+This turns your VN into a more interactive, “dynamic story” experience.
+
+---
+
+## 11) Modular storytelling patterns to keep complexity manageable
+
+### Scene modules (callable episodes)
+Write scenes as reusable “episode” labels, each consuming/setting state.
+
+### Content tags
+Tag scenes with requirements:
+- `requires: rel['cove'] >= 2`
+- `forbids: betrayed_faction`
+
+Then a hub can pick the best available scene.
+
+### “Acknowledge-only” branch
+Sometimes a choice shouldn’t fork the plot, but should change:
+- tone
+- relationship points
+- a callback line later
+
+This gives players reactivity without route explosion.
+
+---
+
+## 12) RNG and controlled randomness (optional)
+
+### Small, controlled random variations
+- Swap an incidental line
+- Randomize a minor NPC reaction
+
+**Tip:** keep randomness *cosmetic* unless you want roguelike-style unpredictability.
+
+---
+
+## 13) Debugging and testing branching
+
+### Add a dev screen / debug keys
+- Toggle flags and stats quickly
+- Jump to chapters
+- Print state values
+
+### Make route locks explicit
+When you “commit” to a route, set a single `route_locked = True` and store `route_name` so logic stays stable.
+
+---
+
+# 5 real-game examples of dynamic story elements
+
+Below are five widely-known narrative games and *what their design patterns look like* in practice.
+
+## 1) Katawa Shoujo — early choices lock you into character routes
+**Dynamic element:** an early set of choices accumulates hidden route flags, and a “route lock-in” point determines which heroine’s route you enter.
+**Why it works:** it’s an implicit route system—players feel they “drifted” into a relationship based on behavior, then the story branches hard.
+
+## 2) Doki Doki Literature Club — choices influence scenes/CGs and some ending conditions
+**Dynamic element:** poem-word or hangout choices affect which character-focused scenes and CGs you see; completion/collection conditions affect an optional ending outcome.
+**Why it works:** it combines *visible choice moments* with *behind-the-scenes state* and then layers meta-narrative consequences.
+
+## 3) Long Live the Queen — stats drive story outcomes via skill checks
+**Dynamic element:** weekly activity choices train stats; story events contain checks that branch to success/failure (often life-or-death).
+**Why it works:** it’s a “raising sim” structure where story branching is powered by numerical state, creating many permutations without writing completely separate routes.
+
+## 4) Our Life: Beginnings & Always — relationship + personality tracking changes later dialogue and events
+**Dynamic element:** repeated choices shape the protagonist’s personality and relationship dynamics; later scenes and dialogue availability reflect that stored state.
+**Why it works:** it emphasizes *reactivity* (callbacks, tailored tone, tailored events) over hard route splits, making small choices feel remembered.
+
+## 5) 80 Days (inkle) — route decisions create radically different narrative paths
+**Dynamic element:** choosing cities/routes changes the entire sequence of events you encounter; repeated playthroughs reveal new routes and storylets.
+**Why it works:** it organizes branching around geography and an event system, so “where you go” is the primary branching driver.
+
+---
+
+## Quick mapping: “Game patterns” → “Ren’Py implementation”
+- **Route lock-in (Katawa Shoujo):** early point counters/flags → decide `route` at a single label → jump to route.
+- **Scene reactivity (Our Life):** lots of small flags + personality counters → conditional dialogue variants → merge points.
+- **Stat check web (Long Live the Queen):** weekly loop → raise stats → `if stat >= threshold` branches inside events.
+- **Meta unlocks (DDLC-style):** `persistent.*` variables to add content across runs.
+- **Travel/event system (80 Days-style):** “hub screen” → select destination → event queue/storylets gated by state.
