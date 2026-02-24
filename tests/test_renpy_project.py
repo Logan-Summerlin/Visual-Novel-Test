@@ -611,6 +611,19 @@ class TestScreenDefinitions(unittest.TestCase):
         for target in self.use_refs:
             self.assertIn(target, self.defined_screens, f"'use {target}' -> undefined screen")
 
+    def test_quick_menu_on_overlay_screens(self):
+        """quick_menu must be added to config.overlay_screens so it appears during gameplay.
+
+        Without this, the quick menu (Skip, Back, History, Auto, Save, etc.)
+        is defined but never shown, making the Skip button inaccessible.
+        """
+        self.assertIn(
+            'config.overlay_screens.append("quick_menu")',
+            self.all_content,
+            "quick_menu screen is not added to config.overlay_screens. "
+            "The Skip button and other quick menu controls will not appear during gameplay."
+        )
+
 
 ################################################################################
 ## Test 7: Character Definitions
@@ -1685,6 +1698,7 @@ class TestConfigVariableCoverageAudit(unittest.TestCase):
     RENPY_BUILTIN_CONFIG = frozenset({
         "has_autosave", "has_quicksave", "has_music", "has_sound",
         "thumbnail_width", "thumbnail_height",
+        "overlay_screens",
     })
 
     def test_config_references_are_defined_or_builtin(self):
