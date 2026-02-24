@@ -38,6 +38,15 @@ default freedom = 0
 default power = 0
 default true_route = False
 
+## Dynamic Story Tracking Variables
+default ch1_path = ""
+default ch2_vision = ""
+default elara_response = ""
+default kael_response = ""
+default sirin_response = ""
+default found_map = False
+default found_tablets = False
+
 ################################################################################
 ## Transitions and Transforms
 ################################################################################
@@ -211,6 +220,8 @@ label ch1_library:
 
     scene black with dissolve
 
+    $ ch1_path = "library"
+
     "You follow the lit path. Elara walks beside you, practically vibrating with excitement."
 
     elara "Look at these texts! Some of these are in languages I've only seen fragments of!"
@@ -234,6 +245,7 @@ label ch1_library:
     "You turn the page and find a diagram — a map of the Tower's floors."
 
     $ knowledge += 1
+    $ found_map = True
 
     "According to the map, each floor contains trials that test different qualities."
 
@@ -243,11 +255,15 @@ label ch1_library:
 
     kael "At least we have some idea what we're dealing with."
 
+    elara "I'm making a copy of this map. We'll need it."
+
     jump ch1_convergence
 
 label ch1_underground:
 
     scene black with dissolve
+
+    $ ch1_path = "underground"
 
     "You follow the dark path downward. Sirin leads the way, her footsteps light and confident."
 
@@ -274,12 +290,15 @@ label ch1_underground:
     "But one tablet is different. It reads: {i}The keys are not found. They are earned. Show the Tower what you are.{/i}"
 
     $ freedom += 1
+    $ found_tablets = True
 
     "Sirin pockets a small crystal. Kael glares at her."
 
     kael "We don't know what these do."
 
     sirin "Exactly. That's what makes it exciting."
+
+    "You carefully memorize the tablet's warning. Something tells you it will matter later."
 
     jump ch1_convergence
 
@@ -292,6 +311,40 @@ label ch1_convergence:
     scene black with dissolve
 
     "Eventually, all paths on the first floor converge at a grand staircase leading upward."
+
+    if ch1_path == "library":
+        "You rejoin the others at the base of the stairs. Elara is already spreading her notes out."
+
+        elara "You won't believe what we found — a complete chronicle of the Tower's builders!"
+
+        sirin "Meanwhile, the dark path had crystals and an underground river. You missed out."
+
+        kael "Did you find anything useful down there?"
+
+        sirin "Depends on your definition of useful. I found something pretty."
+
+        elara "We found a map of the Tower's floors. Each one tests a different quality."
+
+        kael "Now that's useful. Show me."
+
+        "Elara shares the map with the group. Having a guide to the Tower's structure gives everyone a measure of confidence."
+
+    elif ch1_path == "underground":
+        "You rejoin the others at the base of the stairs. Sirin is tossing a crystal between her hands."
+
+        sirin "Look what we found! Crystals, an underground river, and ancient warning tablets."
+
+        elara "Warning tablets? In what language? Why didn't you call me down there?"
+
+        mc "The tablets said the keys aren't found — they're earned."
+
+        elara "That's consistent with what we found in the library. The Tower was built to test seekers."
+
+        kael "And the crystal?"
+
+        sirin "A souvenir. Every good adventure needs souvenirs."
+
+        "The group shares what they've learned. The warnings from below and the knowledge from above paint a clearer picture of what lies ahead."
 
     "As you climb, the runes on the walls pulse faster — the Tower is reacting to your presence."
 
@@ -307,7 +360,10 @@ label ch1_convergence:
 
     "As you cross the chamber, the crystalline voice returns."
 
-    unknown "You have passed the first trial. You chose to look, and you saw."
+    if ch1_path == "library":
+        unknown "You chose the path of light, and found the knowledge left behind. The map will serve you — but maps only show what has already been charted."
+    elif ch1_path == "underground":
+        unknown "You chose the path of shadow, and heard the warnings of those who came before. Heed them — but know that their failures need not be yours."
 
     unknown "The second floor awaits. But be warned — the trials ahead will ask more of you."
 
@@ -362,6 +418,21 @@ label chapter_2:
 
     vesper "You must face it, and decide what it means."
 
+    if trust_elara > trust_kael and trust_elara > trust_sirin:
+        "Elara catches your eye and gestures toward the book-marked door."
+        elara "I wouldn't mind the company, if you're interested. I have a feeling my door won't be... easy."
+
+    elif trust_kael > trust_elara and trust_kael > trust_sirin:
+        "Kael gives you a measured look, then nods toward the shield-marked door."
+        kael "I could use someone steady at my back. If you're willing."
+
+    elif trust_sirin > trust_elara and trust_sirin > trust_kael:
+        "Sirin sidles up to you, her grin not quite hiding the unease in her eyes."
+        sirin "Hey. Want to see what's behind door number three? Could be fun. Probably won't be."
+
+    else:
+        "The three of them glance at you, each wondering who you'll choose to stand beside."
+
     menu:
         "Which door do you approach?"
 
@@ -387,6 +458,8 @@ label chapter_2:
 label ch2_elara:
 
     scene black with dissolve
+
+    $ ch2_vision = "elara"
 
     "You step through the door and find yourself in a university study. Rain patters against tall windows."
 
@@ -414,12 +487,17 @@ label ch2_elara:
 
     mc "I did."
 
+    if found_map:
+        mc "The chronicles in the library mentioned scholars who gave everything for knowledge. You're one of them."
+        elara "I suppose I am. I just hope my story ends better than theirs."
+
     menu:
         "How do you respond?"
 
         "\"You were right to follow your convictions.\"":
             $ knowledge += 2
             $ trust_elara += 1
+            $ elara_response = "convictions"
             elara "I know I was. But being right and being happy aren't always the same thing."
             elara "I gave up everything for knowledge. Sometimes I wonder if it was worth it."
             mc "The truth has to be worth something."
@@ -428,6 +506,7 @@ label ch2_elara:
         "\"Knowledge without connection is lonely.\"":
             $ duty += 1
             $ trust_elara += 1
+            $ elara_response = "connection"
             elara "...You're not wrong."
             elara "I spent so long chasing answers that I forgot to ask who I was finding them for."
             elara "But this Tower — maybe here, the answers and the people can coexist."
@@ -437,6 +516,8 @@ label ch2_elara:
 label ch2_kael:
 
     scene black with dissolve
+
+    $ ch2_vision = "kael"
 
     "You step through the door and find yourself on a battlefield. Smoke chokes the air."
 
@@ -468,12 +549,17 @@ label ch2_kael:
 
     kael "I made my choice. I'd make it again."
 
+    if found_tablets:
+        mc "The tablets underground warned that the Tower takes more than it gives. I think I'm starting to understand what they meant."
+        kael "Some prices you pay whether you choose to or not."
+
     menu:
         "How do you respond?"
 
         "\"You can't save everyone. You saved who you could.\"":
             $ duty += 2
             $ trust_kael += 1
+            $ kael_response = "acceptance"
             kael "That's what I tell myself. Every night."
             kael "A soldier's duty is to protect. But when you can't protect everyone, who do you choose?"
             mc "The person in front of you."
@@ -482,6 +568,7 @@ label ch2_kael:
         "\"Maybe there's a way to protect everyone. That's worth searching for.\"":
             $ knowledge += 1
             $ trust_kael += 1
+            $ kael_response = "idealism"
             kael "An idealist. I used to be one of those."
             kael "But maybe that's why we're here. If this Tower has the power they say it does..."
             kael "Maybe nobody has to be left behind."
@@ -491,6 +578,8 @@ label ch2_kael:
 label ch2_sirin:
 
     scene black with dissolve
+
+    $ ch2_vision = "sirin"
 
     "You step through the door and find yourself in a narrow alley. It's night, and the air smells of rain and rust."
 
@@ -516,12 +605,17 @@ label ch2_sirin:
 
     sirin "Didn't expect the Tower to air my dirty laundry."
 
+    if ch1_path == "underground":
+        mc "You told me underground that the interesting stuff is where people don't want you to look. I think the Tower agrees."
+        sirin "Ha. Guess it does. Though I'd rather it looked at someone else's past for a change."
+
     menu:
         "How do you respond?"
 
         "\"Freedom is worth fighting for. You chose yourself, and that's okay.\"":
             $ freedom += 2
             $ trust_sirin += 1
+            $ sirin_response = "self"
             sirin "Is it though? I've spent my whole life making sure nobody could control me."
             sirin "But running from chains isn't the same as being free."
             mc "Maybe being here — making a real choice — is different."
@@ -530,6 +624,7 @@ label ch2_sirin:
         "\"We all need people. Freedom doesn't mean being alone.\"":
             $ duty += 1
             $ trust_sirin += 1
+            $ sirin_response = "people"
             sirin "Says the person who walked into a mysterious tower based on an unsigned letter."
             sirin "But... yeah. Traveling alone gets old."
             sirin "Maybe that's why I'm actually sticking around with you lot."
@@ -545,6 +640,52 @@ label ch2_convergence:
     scene black with dissolve
 
     "The group reconvenes in the central chamber. Everyone is quieter now, subdued by what they've seen."
+
+    if ch2_vision == "elara":
+        "Elara walks close beside you, a new understanding between you. The others notice."
+
+        kael "You two seem... different."
+
+        elara "We saw something together. It changes things."
+
+        sirin "Cryptic. I like it. Actually, no, I hate it. What did you see?"
+
+        elara "My past. And [player_name] didn't look away."
+
+        if elara_response == "convictions":
+            "There's a fire in Elara's eyes now — the same determination you saw in her vision, but tempered with something warmer."
+        elif elara_response == "connection":
+            "Elara keeps glancing at the group, as though seeing them — really seeing them — for the first time."
+
+    elif ch2_vision == "kael":
+        "Kael's posture has shifted — still guarded, but the tension in his shoulders has eased slightly."
+
+        elara "Are you alright, Kael? You look like you've seen a ghost."
+
+        kael "[player_name] and I faced something. A memory I've been carrying for a long time."
+
+        sirin "Must have been heavy. You look lighter."
+
+        if kael_response == "acceptance":
+            "There's a quiet resolve in Kael's expression. Not the rigid duty of a soldier, but something more human."
+        elif kael_response == "idealism":
+            "Kael's eyes hold a spark that wasn't there before — something almost like hope."
+
+    elif ch2_vision == "sirin":
+        "Sirin has stopped spinning her lockpick. She walks with the group instead of ahead of it."
+
+        elara "Sirin, you're being unusually quiet."
+
+        sirin "Just thinking. It happens sometimes."
+
+        kael "Should we be worried?"
+
+        sirin "[player_name] and I saw something. Let's just say I'm reconsidering some things."
+
+        if sirin_response == "self":
+            "Sirin's restless energy has settled into something steadier. She's still herself — just more present."
+        elif sirin_response == "people":
+            "For the first time, Sirin seems comfortable in the group — not just alongside it, but part of it."
 
     vesper "The Trial of Resolve is complete. You have faced your pasts."
 
@@ -599,11 +740,31 @@ label chapter_3:
 
     vesper "Choose carefully. The Tower remembers."
 
+    if found_map:
+        "You recall the map from the library. It showed each floor testing a different quality — but the fourth floor was damaged, unreadable."
+        mc "The map showed three trials. This must be the final one."
+        vesper "The map showed you what the Resonants wanted you to see. The truth is more complicated."
+
+    if found_tablets:
+        "The tablet's warning echoes in your mind: {i}The keys are not found. They are earned. Show the Tower what you are.{/i}"
+        mc "The tablets said the keys must be earned. Not found."
+        vesper "The ones who left those words understood. I hope you do as well."
+
     elara "I know which path calls to me. The north corridor — Knowledge."
 
     kael "The east. Duty. It's what I know."
 
     sirin "South for me. Freedom, always."
+
+    if ch2_vision == "elara" and trust_elara >= 3:
+        elara "But [player_name]... after what we shared, I want you to know — whatever you choose, I understand."
+        elara "Though I won't pretend I wouldn't welcome your company."
+    elif ch2_vision == "kael" and trust_kael >= 3:
+        kael "[player_name]. You've seen what I carry. You know what duty costs."
+        kael "I won't ask you to follow me. But if you do... I'd be honored."
+    elif ch2_vision == "sirin" and trust_sirin >= 3:
+        sirin "Hey, [player_name]. You're the first person I've let see... all of that."
+        sirin "No pressure. But the south corridor has room for two."
 
     "They look at you expectantly."
 
@@ -635,9 +796,15 @@ label path_knowledge:
 
     "You walk north. Elara falls into step beside you. The others watch you go."
 
-    kael "Be careful."
+    if ch2_vision == "kael":
+        kael "Take care of yourself, [player_name]. You've earned my trust — don't waste it."
+    else:
+        kael "Be careful."
 
-    sirin "Bring back something interesting!"
+    if ch2_vision == "sirin":
+        sirin "Come back in one piece, yeah? I've gotten used to having you around."
+    else:
+        sirin "Bring back something interesting!"
 
     "The corridor of crystal and light narrows as you walk. The walls are covered in inscriptions — every language you know, and hundreds you don't."
 
@@ -691,6 +858,10 @@ label ending_scholar:
 
     mc "Yes. I understand now."
 
+    if found_map:
+        elara "Remember the map we found on the first floor? Every floor testing a different quality?"
+        elara "The map was just the beginning. This is the complete picture."
+
     "You carry the key to the heart of the Tower — a chamber at its peak, where the four alcoves wait."
 
     "You place the Scholar's Key in its alcove. The Tower rumbles."
@@ -714,6 +885,19 @@ label ending_scholar:
     elara "And the answer changes every day."
 
     "You and Elara spend the rest of your lives cataloguing what the Tower released."
+
+    if ch2_vision == "elara" and trust_elara >= 3:
+        "The bond between you runs deeper than scholarship. You saw her past, her sacrifice, her determination."
+
+        if elara_response == "convictions":
+            elara "You told me I was right to follow my convictions. Do you still believe that?"
+            mc "More than ever. Look at what we've built."
+            elara "Together. That's the part I didn't expect."
+        elif elara_response == "connection":
+            elara "You once told me that knowledge without connection is lonely."
+            elara "I've thought about that every day since."
+            mc "And?"
+            elara "You were right. This — what we have — this is what makes the knowledge matter."
 
     "You never finish. There is always more to learn."
 
@@ -742,9 +926,15 @@ label path_duty:
 
     "You walk east. Kael nods approvingly and follows. The others stay behind."
 
-    elara "Take notes for me!"
+    if ch2_vision == "elara":
+        elara "Be safe, [player_name]. I'll be here when you get back."
+    else:
+        elara "Take notes for me!"
 
-    sirin "Try not to get killed by anything boring."
+    if ch2_vision == "sirin":
+        sirin "Don't do anything I wouldn't do. Actually, scratch that — do whatever keeps you alive."
+    else:
+        sirin "Try not to get killed by anything boring."
 
     "The corridor of stone and iron feels like walking into a fortress. The walls are thick, the air cool and dry."
 
@@ -800,6 +990,11 @@ label ending_guardian:
 
     kael "That the strong protect the weak. That the wall holds, no matter what."
 
+    if found_tablets:
+        mc "The tablets underground said the Tower takes more than it gives. I think this is what they meant."
+        kael "The Tower takes your freedom. Your comfort. Your peace. But what it gives in return..."
+        kael "It gives you purpose. That's worth more."
+
     "You carry the key to the heart of the Tower and place it in its alcove."
 
     "The Tower transforms. Its stones harden. Its runes blaze with protective light."
@@ -813,6 +1008,18 @@ label ending_guardian:
     "You stand beside him, keeping watch."
 
     "It is a life of sacrifice. There are no celebrations, no parades. The threats you stop are threats the world never knows about."
+
+    if ch2_vision == "kael" and trust_kael >= 3:
+        "But you understand. You've seen what drives him — the bridge, the choice, the weight he carries."
+
+        if kael_response == "acceptance":
+            kael "You told me once that you save the person in front of you."
+            kael "I've been thinking about that. Standing here, with you beside me..."
+            kael "Maybe I finally did."
+        elif kael_response == "idealism":
+            kael "You said there might be a way to protect everyone."
+            mc "I still believe that."
+            kael "This Tower... maybe it's the answer. Maybe with this, nobody has to be left behind."
 
     kael "Do you ever regret it?"
 
@@ -851,9 +1058,15 @@ label path_freedom:
 
     "You walk south. Sirin grins and bounds ahead. The others watch."
 
-    kael "Don't do anything I wouldn't do."
+    if ch2_vision == "kael":
+        kael "Watch yourself out there, [player_name]. And watch Sirin too — someone has to."
+    else:
+        kael "Don't do anything I wouldn't do."
 
-    elara "That leaves quite a bit of room, actually."
+    if ch2_vision == "elara":
+        elara "Come back safe. I mean it, [player_name]."
+    else:
+        elara "That leaves quite a bit of room, actually."
 
     "The corridor of wind and sky opens almost immediately into open air."
 
@@ -907,6 +1120,10 @@ label ending_liberator:
 
     sirin "That's how you know it's real."
 
+    if ch1_path == "underground":
+        sirin "Remember the cavern? The crystals, the river, the way the darkness opened up into something beautiful?"
+        sirin "That's what freedom looks like. You have to go through the dark to find it."
+
     "You carry the key to the heart of the Tower and place it in its alcove."
 
     "The Tower opens. Every door, every seal, every barrier — dissolved."
@@ -930,6 +1147,17 @@ label ending_liberator:
     sirin "Some of them will choose badly. But at least they're choosing."
 
     "You and Sirin travel the world, seeing the changes firsthand."
+
+    if ch2_vision == "sirin" and trust_sirin >= 3:
+        "The road is easier with someone who understands. You saw her past — the hungry child, the offered cage, the choice to stay free."
+
+        if sirin_response == "self":
+            sirin "You told me choosing myself was okay. I think I'm finally starting to believe it."
+            sirin "But choosing to have you beside me? That was the better choice."
+        elif sirin_response == "people":
+            sirin "You said freedom doesn't mean being alone. I didn't believe you then."
+            mc "And now?"
+            sirin "Now I think you might be the smartest person I know. Don't let it go to your head."
 
     "You help where you can. You witness where you can't."
 
@@ -959,6 +1187,13 @@ label path_power:
     scene black with dissolve
 
     "You walk west. Alone."
+
+    if ch2_vision == "elara":
+        elara "[player_name], wait — the western corridor — you don't have to—"
+    elif ch2_vision == "kael":
+        kael "[player_name]! That path... be careful. Power is not the same as strength."
+    elif ch2_vision == "sirin":
+        sirin "Hey! Where are you — [player_name]!"
 
     "The others call after you, but you don't stop. Something in the western corridor pulls at you."
 
@@ -1036,15 +1271,31 @@ label ending_shadow:
 
     "Kael, Elara, and Sirin try to reach you. You can hear them calling from below."
 
-    kael "This isn't protection — it's control!"
+    if ch2_vision == "kael" and trust_kael >= 3:
+        kael "[player_name], listen to me. You saw my past. You know what happens when one person decides who lives and who dies."
+        kael "You told me there might be a way to protect everyone. This isn't it."
+    else:
+        kael "This isn't protection — it's control!"
 
-    elara "You're erasing people's ability to choose!"
+    if ch2_vision == "elara" and trust_elara >= 3:
+        elara "[player_name], please. You understood what knowledge meant — that it belongs to everyone."
+        elara "You can't take their choices away. That's not wisdom. That's fear."
+    else:
+        elara "You're erasing people's ability to choose!"
 
-    sirin "This is the opposite of freedom!"
+    if ch2_vision == "sirin" and trust_sirin >= 3:
+        sirin "[player_name]... you saw where I came from. You know what it means to have someone control your life."
+        sirin "Don't become the thing we both despise. Please."
+    else:
+        sirin "This is the opposite of freedom!"
 
     mc "This is what freedom looks like when someone is responsible enough to manage it."
 
     "They leave the Tower. You let them go."
+
+    if found_tablets:
+        "The tablet's warning surfaces in your mind, unbidden: {i}The Tower takes more than it gives.{/i}"
+        "You push the thought away. You are giving, not taking. The world is better."
 
     "The world is better. You tell yourself that. The numbers prove it — less war, less suffering, less chaos."
 
@@ -1124,6 +1375,15 @@ label path_true:
 
     "The four echoes nod."
 
+    if found_map:
+        "The Scholar-echo gestures, and the map from the library appears — the one with the damaged fourth floor."
+        unknown "The map was never damaged. The fourth trial was hidden on purpose."
+        unknown "Because the fourth trial is this: understanding that no single path is complete."
+
+    if found_tablets:
+        "The Guardian-echo speaks, and the tablet's words ring through the void."
+        unknown "The keys are not found. They are earned. And the greatest key is earned by walking every road."
+
     "Vesper appears — not as an echo this time, but fully present. Real."
 
     vesper "This is what the Tower was waiting for. Not someone who could choose — but someone who could understand why each choice matters."
@@ -1150,11 +1410,20 @@ label path_true:
 
     "Your companions are there. All three of them."
 
-    elara "What happened? You vanished!"
+    if ch2_vision == "elara":
+        elara "You're back! I felt something — like the vision we shared, but bigger. Are you alright?"
+    else:
+        elara "What happened? You vanished!"
 
-    kael "We've been searching for hours!"
+    if ch2_vision == "kael":
+        kael "I was ready to tear this Tower apart looking for you, [player_name]."
+    else:
+        kael "We've been searching for hours!"
 
-    sirin "The Tower wouldn't let us leave. It said we had to wait for you."
+    if ch2_vision == "sirin":
+        sirin "Don't you ever do that to me again. I thought — I thought I'd lost the one person who actually sees me."
+    else:
+        sirin "The Tower wouldn't let us leave. It said we had to wait for you."
 
     mc "I found the answer. All four keys. But they're not separate — they never were."
 
@@ -1207,6 +1476,16 @@ label path_true:
     "The Tower settles into a quiet hum. Not dying, but resting. Its purpose fulfilled."
 
     "You stand with your friends in the light of a new dawn."
+
+    if ch2_vision == "elara" and trust_elara >= 3:
+        elara "[player_name]... thank you. For seeing my past and not looking away. For understanding."
+        mc "You showed me that knowledge is worth any sacrifice. And you were right."
+    elif ch2_vision == "kael" and trust_kael >= 3:
+        kael "[player_name]. You saw my worst moment, and you didn't judge me."
+        mc "You taught me that duty isn't about being perfect. It's about not giving up."
+    elif ch2_vision == "sirin" and trust_sirin >= 3:
+        sirin "[player_name]... you know me. The real me. Not many people can say that."
+        mc "You showed me that freedom means having the courage to choose, even when it's terrifying."
 
     elara "So... what now?"
 

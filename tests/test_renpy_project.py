@@ -1780,5 +1780,408 @@ class TestEndingGalleryScreen(unittest.TestCase):
             )
 
 
+################################################################################
+## Test 29: Dynamic Story Variables
+################################################################################
+
+
+class TestDynamicStoryVariables(unittest.TestCase):
+    """Test that all dynamic story tracking variables are properly defined."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.script = read_file("script.rpy")
+
+    def test_ch1_path_has_default(self):
+        self.assertIn('default ch1_path = ""', self.script)
+
+    def test_ch2_vision_has_default(self):
+        self.assertIn('default ch2_vision = ""', self.script)
+
+    def test_elara_response_has_default(self):
+        self.assertIn('default elara_response = ""', self.script)
+
+    def test_kael_response_has_default(self):
+        self.assertIn('default kael_response = ""', self.script)
+
+    def test_sirin_response_has_default(self):
+        self.assertIn('default sirin_response = ""', self.script)
+
+    def test_found_map_has_default(self):
+        self.assertIn('default found_map = False', self.script)
+
+    def test_found_tablets_has_default(self):
+        self.assertIn('default found_tablets = False', self.script)
+
+
+################################################################################
+## Test 30: Ch1 Path Tracking
+################################################################################
+
+
+class TestCh1PathTracking(unittest.TestCase):
+    """Test that Chapter 1 branches set tracking variables."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.script = read_file("script.rpy")
+        # Extract label blocks
+        cls.labels = {}
+        label_starts = [
+            (m.start(), m.group(1))
+            for m in re.finditer(r'^label\s+(\w+)\s*:', cls.script, re.MULTILINE)
+        ]
+        for i, (start, name) in enumerate(label_starts):
+            end = label_starts[i + 1][0] if i + 1 < len(label_starts) else len(cls.script)
+            cls.labels[name] = cls.script[start:end]
+
+    def test_library_sets_ch1_path(self):
+        self.assertIn('ch1_path = "library"', self.labels["ch1_library"])
+
+    def test_underground_sets_ch1_path(self):
+        self.assertIn('ch1_path = "underground"', self.labels["ch1_underground"])
+
+    def test_library_sets_found_map(self):
+        self.assertIn('found_map = True', self.labels["ch1_library"])
+
+    def test_underground_sets_found_tablets(self):
+        self.assertIn('found_tablets = True', self.labels["ch1_underground"])
+
+
+################################################################################
+## Test 31: Ch2 Vision Tracking
+################################################################################
+
+
+class TestCh2VisionTracking(unittest.TestCase):
+    """Test that Chapter 2 branches set vision tracking variables."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.script = read_file("script.rpy")
+        cls.labels = {}
+        label_starts = [
+            (m.start(), m.group(1))
+            for m in re.finditer(r'^label\s+(\w+)\s*:', cls.script, re.MULTILINE)
+        ]
+        for i, (start, name) in enumerate(label_starts):
+            end = label_starts[i + 1][0] if i + 1 < len(label_starts) else len(cls.script)
+            cls.labels[name] = cls.script[start:end]
+
+    def test_elara_branch_sets_ch2_vision(self):
+        self.assertIn('ch2_vision = "elara"', self.labels["ch2_elara"])
+
+    def test_kael_branch_sets_ch2_vision(self):
+        self.assertIn('ch2_vision = "kael"', self.labels["ch2_kael"])
+
+    def test_sirin_branch_sets_ch2_vision(self):
+        self.assertIn('ch2_vision = "sirin"', self.labels["ch2_sirin"])
+
+    def test_elara_branch_sets_response(self):
+        self.assertIn('elara_response =', self.labels["ch2_elara"])
+
+    def test_kael_branch_sets_response(self):
+        self.assertIn('kael_response =', self.labels["ch2_kael"])
+
+    def test_sirin_branch_sets_response(self):
+        self.assertIn('sirin_response =', self.labels["ch2_sirin"])
+
+
+################################################################################
+## Test 32: Dynamic Convergence Dialogue
+################################################################################
+
+
+class TestDynamicConvergenceDialogue(unittest.TestCase):
+    """Test that convergence points contain path-aware conditional dialogue."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.script = read_file("script.rpy")
+        cls.labels = {}
+        label_starts = [
+            (m.start(), m.group(1))
+            for m in re.finditer(r'^label\s+(\w+)\s*:', cls.script, re.MULTILINE)
+        ]
+        for i, (start, name) in enumerate(label_starts):
+            end = label_starts[i + 1][0] if i + 1 < len(label_starts) else len(cls.script)
+            cls.labels[name] = cls.script[start:end]
+
+    def test_ch1_convergence_checks_ch1_path(self):
+        """Ch1 convergence should have different dialogue based on path taken."""
+        block = self.labels["ch1_convergence"]
+        self.assertIn('ch1_path == "library"', block)
+        self.assertIn('ch1_path == "underground"', block)
+
+    def test_ch2_convergence_checks_ch2_vision(self):
+        """Ch2 convergence should have different dialogue based on whose vision was seen."""
+        block = self.labels["ch2_convergence"]
+        self.assertIn('ch2_vision == "elara"', block)
+        self.assertIn('ch2_vision == "kael"', block)
+        self.assertIn('ch2_vision == "sirin"', block)
+
+    def test_ch2_convergence_checks_responses(self):
+        """Ch2 convergence should reference the player's response choices."""
+        block = self.labels["ch2_convergence"]
+        self.assertIn('elara_response ==', block)
+        self.assertIn('kael_response ==', block)
+        self.assertIn('sirin_response ==', block)
+
+
+################################################################################
+## Test 33: Trust-Based Dynamic Content
+################################################################################
+
+
+class TestTrustBasedContent(unittest.TestCase):
+    """Test that trust variables influence dialogue and choices."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.script = read_file("script.rpy")
+        cls.labels = {}
+        label_starts = [
+            (m.start(), m.group(1))
+            for m in re.finditer(r'^label\s+(\w+)\s*:', cls.script, re.MULTILINE)
+        ]
+        for i, (start, name) in enumerate(label_starts):
+            end = label_starts[i + 1][0] if i + 1 < len(label_starts) else len(cls.script)
+            cls.labels[name] = cls.script[start:end]
+
+    def test_chapter_2_has_trust_based_suggestions(self):
+        """Ch2 menu area should suggest doors based on trust levels."""
+        block = self.labels["chapter_2"]
+        self.assertIn("trust_elara", block)
+        self.assertIn("trust_kael", block)
+        self.assertIn("trust_sirin", block)
+
+    def test_chapter_3_has_trust_gated_dialogue(self):
+        """Ch3 should have trust-gated character appeals."""
+        block = self.labels["chapter_3"]
+        self.assertIn("trust_elara >= 3", block)
+        self.assertIn("trust_kael >= 3", block)
+        self.assertIn("trust_sirin >= 3", block)
+
+    def test_ending_scholar_has_trust_gated_scene(self):
+        """Scholar ending should have bonus content for high Elara trust."""
+        block = self.labels["ending_scholar"]
+        self.assertIn("trust_elara >= 3", block)
+
+    def test_ending_guardian_has_trust_gated_scene(self):
+        """Guardian ending should have bonus content for high Kael trust."""
+        block = self.labels["ending_guardian"]
+        self.assertIn("trust_kael >= 3", block)
+
+    def test_ending_liberator_has_trust_gated_scene(self):
+        """Liberator ending should have bonus content for high Sirin trust."""
+        block = self.labels["ending_liberator"]
+        self.assertIn("trust_sirin >= 3", block)
+
+    def test_ending_shadow_has_trust_gated_pleas(self):
+        """Shadow ending should have trust-gated personal pleas from companions."""
+        block = self.labels["ending_shadow"]
+        self.assertIn("trust_kael >= 3", block)
+        self.assertIn("trust_elara >= 3", block)
+        self.assertIn("trust_sirin >= 3", block)
+
+
+################################################################################
+## Test 34: Discovery Callbacks
+################################################################################
+
+
+class TestDiscoveryCallbacks(unittest.TestCase):
+    """Test that early discoveries are referenced in later scenes."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.script = read_file("script.rpy")
+        cls.labels = {}
+        label_starts = [
+            (m.start(), m.group(1))
+            for m in re.finditer(r'^label\s+(\w+)\s*:', cls.script, re.MULTILINE)
+        ]
+        for i, (start, name) in enumerate(label_starts):
+            end = label_starts[i + 1][0] if i + 1 < len(label_starts) else len(cls.script)
+            cls.labels[name] = cls.script[start:end]
+
+    def test_chapter_3_references_map(self):
+        """Chapter 3 should reference the map if found."""
+        block = self.labels["chapter_3"]
+        self.assertIn("found_map", block)
+
+    def test_chapter_3_references_tablets(self):
+        """Chapter 3 should reference the tablets if found."""
+        block = self.labels["chapter_3"]
+        self.assertIn("found_tablets", block)
+
+    def test_ending_scholar_references_map(self):
+        """Scholar ending should callback to the library map."""
+        block = self.labels["ending_scholar"]
+        self.assertIn("found_map", block)
+
+    def test_ending_guardian_references_tablets(self):
+        """Guardian ending should callback to the warning tablets."""
+        block = self.labels["ending_guardian"]
+        self.assertIn("found_tablets", block)
+
+    def test_ending_liberator_references_underground(self):
+        """Liberator ending should callback to the underground exploration."""
+        block = self.labels["ending_liberator"]
+        self.assertIn("ch1_path", block)
+
+    def test_ending_shadow_references_tablets(self):
+        """Shadow ending should callback to tablet warnings."""
+        block = self.labels["ending_shadow"]
+        self.assertIn("found_tablets", block)
+
+    def test_true_path_references_discoveries(self):
+        """True path should reference both maps and tablets."""
+        block = self.labels["path_true"]
+        self.assertIn("found_map", block)
+        self.assertIn("found_tablets", block)
+
+    def test_true_path_references_ch2_vision(self):
+        """True path should have vision-specific reunion dialogue."""
+        block = self.labels["path_true"]
+        self.assertIn('ch2_vision == "elara"', block)
+        self.assertIn('ch2_vision == "kael"', block)
+        self.assertIn('ch2_vision == "sirin"', block)
+
+
+################################################################################
+## Test 35: Response Variable Consistency
+################################################################################
+
+
+class TestResponseVariableConsistency(unittest.TestCase):
+    """Test that response variables are set to valid values and referenced later."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.script = read_file("script.rpy")
+
+    def test_elara_response_values_are_consistent(self):
+        """Elara response values set in ch2 must match values checked later."""
+        set_values = set(re.findall(r'elara_response\s*=\s*"(\w+)"', self.script))
+        check_values = set(re.findall(r'elara_response\s*==\s*"(\w+)"', self.script))
+        # Every value checked should be a value that can be set
+        undefined_checks = check_values - set_values
+        self.assertEqual(
+            undefined_checks, set(),
+            f"elara_response checks values never set: {undefined_checks}"
+        )
+
+    def test_kael_response_values_are_consistent(self):
+        """Kael response values set in ch2 must match values checked later."""
+        set_values = set(re.findall(r'kael_response\s*=\s*"(\w+)"', self.script))
+        check_values = set(re.findall(r'kael_response\s*==\s*"(\w+)"', self.script))
+        undefined_checks = check_values - set_values
+        self.assertEqual(
+            undefined_checks, set(),
+            f"kael_response checks values never set: {undefined_checks}"
+        )
+
+    def test_sirin_response_values_are_consistent(self):
+        """Sirin response values set in ch2 must match values checked later."""
+        set_values = set(re.findall(r'sirin_response\s*=\s*"(\w+)"', self.script))
+        check_values = set(re.findall(r'sirin_response\s*==\s*"(\w+)"', self.script))
+        undefined_checks = check_values - set_values
+        self.assertEqual(
+            undefined_checks, set(),
+            f"sirin_response checks values never set: {undefined_checks}"
+        )
+
+    def test_ch1_path_values_are_consistent(self):
+        """ch1_path values set must match values checked."""
+        set_values = set(re.findall(r'ch1_path\s*=\s*"(\w+)"', self.script))
+        check_values = set(re.findall(r'ch1_path\s*==\s*"(\w+)"', self.script))
+        undefined_checks = check_values - set_values
+        self.assertEqual(
+            undefined_checks, set(),
+            f"ch1_path checks values never set: {undefined_checks}"
+        )
+
+    def test_ch2_vision_values_are_consistent(self):
+        """ch2_vision values set must match values checked."""
+        set_values = set(re.findall(r'ch2_vision\s*=\s*"(\w+)"', self.script))
+        check_values = set(re.findall(r'ch2_vision\s*==\s*"(\w+)"', self.script))
+        undefined_checks = check_values - set_values
+        self.assertEqual(
+            undefined_checks, set(),
+            f"ch2_vision checks values never set: {undefined_checks}"
+        )
+
+
+################################################################################
+## Test 36: Dynamic Content Does Not Break Flow
+################################################################################
+
+
+class TestDynamicContentFlowSafety(unittest.TestCase):
+    """Verify that conditional dynamic content doesn't create dead ends or break flow."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.script = read_file("script.rpy")
+        cls.labels = {}
+        label_starts = [
+            (m.start(), m.group(1))
+            for m in re.finditer(r'^label\s+(\w+)\s*:', cls.script, re.MULTILINE)
+        ]
+        for i, (start, name) in enumerate(label_starts):
+            end = label_starts[i + 1][0] if i + 1 < len(label_starts) else len(cls.script)
+            cls.labels[name] = cls.script[start:end]
+
+    def test_ch1_convergence_always_reaches_chapter_2(self):
+        """Regardless of ch1_path value, convergence must jump to chapter_2."""
+        block = self.labels["ch1_convergence"]
+        self.assertIn("jump chapter_2", block)
+
+    def test_ch2_convergence_always_reaches_chapter_3(self):
+        """Regardless of ch2_vision value, convergence must jump to chapter_3."""
+        block = self.labels["ch2_convergence"]
+        self.assertIn("jump chapter_3", block)
+
+    def test_all_dynamic_variables_defined_before_conditional_use(self):
+        """All dynamic tracking variables must have defaults so conditionals don't crash."""
+        required_defaults = [
+            'default ch1_path = ""',
+            'default ch2_vision = ""',
+            'default elara_response = ""',
+            'default kael_response = ""',
+            'default sirin_response = ""',
+            'default found_map = False',
+            'default found_tablets = False',
+        ]
+        for default in required_defaults:
+            self.assertIn(default, self.script, f"Missing: {default}")
+
+    def test_ch1_path_set_before_convergence(self):
+        """ch1_path must be set in both Ch1 branches before convergence checks it."""
+        # Library sets it
+        lib_block = self.labels["ch1_library"]
+        lib_set_idx = lib_block.find('ch1_path =')
+        lib_jump_idx = lib_block.find('jump ch1_convergence')
+        self.assertGreater(lib_jump_idx, lib_set_idx,
+                           "ch1_library must set ch1_path before jumping to convergence")
+
+        # Underground sets it
+        ug_block = self.labels["ch1_underground"]
+        ug_set_idx = ug_block.find('ch1_path =')
+        ug_jump_idx = ug_block.find('jump ch1_convergence')
+        self.assertGreater(ug_jump_idx, ug_set_idx,
+                           "ch1_underground must set ch1_path before jumping to convergence")
+
+    def test_ch2_vision_set_before_convergence(self):
+        """ch2_vision must be set in all Ch2 branches before convergence checks it."""
+        for branch in ["ch2_elara", "ch2_kael", "ch2_sirin"]:
+            block = self.labels[branch]
+            set_idx = block.find('ch2_vision =')
+            jump_idx = block.find('jump ch2_convergence')
+            self.assertGreater(jump_idx, set_idx,
+                               f"{branch} must set ch2_vision before jumping to convergence")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
